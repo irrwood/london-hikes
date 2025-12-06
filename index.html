@@ -44,12 +44,14 @@
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-        /* Animation */
-        @keyframes slideIn {
-            from { transform: translateY(20px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
+        /* Animation: Slide In Right (Non-linear, Silky) */
+        @keyframes slideInRight {
+            from { transform: translateX(30px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
         }
-        .slide-in { animation: slideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .slide-in-right { 
+            animation: slideInRight 0.5s cubic-bezier(0.19, 1, 0.22, 1) forwards; 
+        }
         
         .custom-div-icon { background: transparent; border: none; }
         
@@ -332,7 +334,6 @@
             }, []);
 
             // --- FOG LAYER (CANVAS IMPLEMENTATION) ---
-            // Re-creating the "Pre-render" optimization for smooth performance
             const gradientCanvas = useMemo(() => {
                 const c = document.createElement('canvas');
                 c.width = 120; // 2 * radius (60)
@@ -354,7 +355,6 @@
                 if (!map || !canvas) return;
 
                 if (!fogMode) {
-                    // Just clear it if fog is off
                     const ctx = canvas.getContext('2d');
                     ctx.clearRect(0, 0, canvas.width, canvas.height);
                     return;
@@ -364,7 +364,6 @@
                 const size = map.getSize();
                 const dpr = window.devicePixelRatio || 1;
 
-                // Resize logic
                 if (canvas.width !== size.x * dpr || canvas.height !== size.y * dpr) {
                     canvas.width = size.x * dpr;
                     canvas.height = size.y * dpr;
@@ -373,29 +372,24 @@
                     canvas.style.height = `${size.y}px`;
                 }
 
-                // 1. Fill Dark Fog
                 ctx.globalCompositeOperation = 'source-over';
                 ctx.clearRect(0, 0, size.x, size.y);
-                ctx.fillStyle = 'rgba(20, 25, 35, 0.85)'; // Deep dark blue-grey fog
+                ctx.fillStyle = 'rgba(20, 25, 35, 0.85)'; 
                 ctx.fillRect(0, 0, size.x, size.y);
 
-                // 2. Erase Holes using Sprite (Fast)
                 ctx.globalCompositeOperation = 'destination-out';
 
                 const drawHole = (lat, lng) => {
                     const point = map.latLngToContainerPoint([lat, lng]);
-                    // Draw pre-rendered gradient centered at point
                     ctx.drawImage(gradientCanvas, point.x - 60, point.y - 60);
                 };
 
-                // Holes for Hiking Spots
                 hikingSpots.forEach(spot => {
                     if (visitedSpots.has(spot.id)) {
                         drawHole(spot.coords[0], spot.coords[1]);
                     }
                 });
 
-                // Holes for Raw History
                 USER_HISTORY_LOCATIONS.forEach(loc => {
                     drawHole(loc.coords[0], loc.coords[1]);
                 });
@@ -403,7 +397,6 @@
                 ctx.globalCompositeOperation = 'source-over';
             };
 
-            // Animation Loop
             useEffect(() => {
                 const map = mapInstanceRef.current;
                 if (!map) return;
@@ -423,7 +416,7 @@
                     map.on('move', onMapUpdate);
                     map.on('zoom', onMapUpdate);
                     map.on('resize', onMapUpdate);
-                    renderLoop(); // Initial
+                    renderLoop(); 
                 } else {
                     const canvas = canvasRef.current;
                     if (canvas) {
@@ -452,7 +445,7 @@
                 markersRef.current.forEach(m => m.remove());
                 markersRef.current = [];
 
-                // 1. Render User History Markers (Bottom Layer)
+                // User History Markers
                 USER_HISTORY_LOCATIONS.forEach(loc => {
                     const customIcon = L.divIcon({
                         className: 'custom-div-icon',
@@ -463,7 +456,7 @@
 
                     const marker = L.marker(loc.coords, { 
                         icon: customIcon, 
-                        zIndexOffset: 100, // Bottom layer
+                        zIndexOffset: 100,
                     }).addTo(map);
                     
                     marker.bindTooltip(loc.name, {
@@ -475,7 +468,7 @@
                     markersRef.current.push(marker);
                 });
 
-                // 2. Render Hiking Spots (Top Layer)
+                // Hiking Spots
                 const filteredSpots = regionFilter === "All" 
                     ? hikingSpots 
                     : hikingSpots.filter(s => s.region === regionFilter);
@@ -483,7 +476,6 @@
                 filteredSpots.forEach(spot => {
                     const isVisited = visitedSpots.has(spot.id);
 
-                    // Marker Styling
                     let markerColor = isVisited ? '#10b981' : '#3b82f6';
                     let markerOpacity = 1; 
                     
@@ -545,39 +537,41 @@
                     <div className={`absolute z-[1000] top-4 bottom-4 left-4 w-full max-w-md bg-white shadow-2xl rounded-3xl flex flex-col transition-transform duration-500 ease-in-out transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-[110%]'}`}>
                         
                         {/* Header - Minimalist White */}
-                        <div className="p-6 pb-2 bg-white rounded-t-3xl z-10">
-                            <div className="flex justify-between items-start mb-2">
-                                <div>
-                                    <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight leading-none">
-                                        Where to?
-                                    </h1>
-                                    <p className="text-gray-500 text-sm font-medium mt-1">UK Hiking Guide</p>
-                                </div>
-                                <button onClick={() => setSidebarOpen(false)} className="md:hidden p-2 bg-gray-100 hover:bg-gray-200 rounded-full transition-colors"><Icon name="x" size={20} className="text-gray-600" /></button>
-                            </div>
+                        <div className={`bg-white rounded-t-3xl z-10 transition-all duration-300 ${selectedSpot ? 'h-0 overflow-hidden opacity-0' : 'p-6 pb-2 h-auto opacity-100'}`}>
+                            {!selectedSpot && (
+                                <>
+                                    <div className="flex justify-between items-start mb-2">
+                                        <div>
+                                            <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight leading-none">
+                                                Where to?
+                                            </h1>
+                                            <p className="text-gray-500 text-sm font-medium mt-1">UK Hiking Guide</p>
+                                        </div>
+                                        <button onClick={() => setSidebarOpen(false)} className="md:hidden p-2 bg-gray-100 hover:bg-gray-200 rounded-full transition-colors"><Icon name="x" size={20} className="text-gray-600" /></button>
+                                    </div>
 
-                            {/* Search/Filter Container */}
-                            <div className="mt-4">
-                                <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
-                                    {regions.map(region => (
-                                        <button 
-                                            key={region}
-                                            onClick={() => setRegionFilter(region)}
-                                            className={`whitespace-nowrap px-4 py-2 rounded-full text-sm font-semibold transition-all duration-200 ${regionFilter === region ? 'bg-black text-white shadow-lg' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
-                                        >
-                                            {region}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
+                                    {/* Search/Filter Container */}
+                                    <div className="mt-4">
+                                        <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
+                                            {regions.map(region => (
+                                                <button 
+                                                    key={region}
+                                                    onClick={() => setRegionFilter(region)}
+                                                    className={`whitespace-nowrap px-4 py-2 rounded-full text-sm font-semibold transition-all duration-200 ${regionFilter === region ? 'bg-black text-white shadow-lg' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                                                >
+                                                    {region}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
 
-                            {/* Sort Pills */}
-                             {!selectedSpot && (
-                                <div className="flex gap-2 mt-2 pb-2 border-b border-gray-100">
-                                    <span className="text-xs font-bold text-gray-400 uppercase self-center mr-2">Sort by</span>
-                                    <button onClick={() => setSortBy('heat')} className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${sortBy === 'heat' ? 'bg-blue-50 text-blue-700' : 'text-gray-400 hover:bg-gray-50'}`}>Heat</button>
-                                    <button onClick={() => setSortBy('rating')} className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${sortBy === 'rating' ? 'bg-yellow-50 text-yellow-700' : 'text-gray-400 hover:bg-gray-50'}`}>Rating</button>
-                                </div>
+                                    {/* Sort Pills */}
+                                    <div className="flex gap-2 mt-2 pb-2 border-b border-gray-100">
+                                        <span className="text-xs font-bold text-gray-400 uppercase self-center mr-2">Sort by</span>
+                                        <button onClick={() => setSortBy('heat')} className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${sortBy === 'heat' ? 'bg-blue-50 text-blue-700' : 'text-gray-400 hover:bg-gray-50'}`}>Heat</button>
+                                        <button onClick={() => setSortBy('rating')} className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${sortBy === 'rating' ? 'bg-yellow-50 text-yellow-700' : 'text-gray-400 hover:bg-gray-50'}`}>Rating</button>
+                                    </div>
+                                </>
                             )}
                         </div>
 
@@ -585,12 +579,12 @@
                         <div className="flex-1 overflow-y-auto custom-scrollbar px-6 pb-6">
                             
                             {selectedSpot ? (
-                                <div className="slide-in pt-2">
-                                    <button onClick={() => setSelectedSpot(null)} className="mb-4 inline-flex items-center gap-2 text-sm font-bold text-gray-500 hover:text-black transition-colors bg-gray-100 px-3 py-1.5 rounded-full">
+                                <div className="slide-in-right pt-6 h-full flex flex-col">
+                                    <button onClick={() => setSelectedSpot(null)} className="mb-4 inline-flex items-center gap-2 text-sm font-bold text-gray-500 hover:text-black transition-colors bg-gray-100 px-3 py-1.5 rounded-full w-fit">
                                         <Icon name="arrow-left" size={16} /> Back
                                     </button>
                                     
-                                    <div className="space-y-6">
+                                    <div className="space-y-6 flex-1 overflow-y-auto custom-scrollbar">
                                         {/* Title Section */}
                                         <div>
                                             {visitedSpots.has(selectedSpot.id) && (
@@ -624,7 +618,7 @@
                                             {selectedSpot.description}
                                         </p>
 
-                                        <div className="space-y-3 pt-4">
+                                        <div className="space-y-3 pt-4 pb-6">
                                             <button 
                                                 onClick={(e) => toggleVisited(e, selectedSpot.id)}
                                                 className={`w-full py-4 rounded-2xl font-bold transition-all flex justify-center items-center gap-2 ${visitedSpots.has(selectedSpot.id) ? 'bg-green-50 text-green-700' : 'bg-gray-900 text-white hover:bg-black shadow-lg hover:shadow-xl transform hover:-translate-y-0.5'}`}
@@ -641,6 +635,9 @@
                                                     <Icon name="tree-pine" size={18} /> AllTrails
                                                 </a>
                                             </div>
+                                            <a href={`https://www.komoot.com/discover/text?q=${encodeURIComponent(selectedSpot.name)}`} target="_blank" className="flex justify-center items-center gap-2 bg-lime-50 hover:bg-lime-100 text-lime-700 font-bold py-3 rounded-xl transition-colors">
+                                                <Icon name="map-pin" size={18} /> Komoot
+                                            </a>
                                         </div>
                                     </div>
                                 </div>
