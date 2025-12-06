@@ -43,13 +43,33 @@
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-        /* --- ANIMATIONS --- */
+        /* --- ELEGANT SLIDE ANIMATIONS (No Scaling) --- */
+        
+        /* Slide In From Right (For Details) */
         @keyframes slideInRight {
             from { transform: translateX(100%); opacity: 0; }
             to { transform: translateX(0); opacity: 1; }
         }
         .animate-slide-in-right { 
             animation: slideInRight 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; 
+        }
+
+        /* Slide In From Left (For List "Back" action) */
+        @keyframes slideInLeft {
+            from { transform: translateX(-30px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .animate-slide-in-left { 
+            animation: slideInLeft 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; 
+        }
+
+        /* Gentle Fade for List Items */
+        @keyframes fadeInUpSimple {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-up {
+            animation: fadeInUpSimple 0.4s ease-out forwards;
         }
 
         @keyframes fadeIn {
@@ -484,7 +504,6 @@ Keep it practical, friendly, and use emojis. Language: Chinese. Use Markdown for
             }, []);
 
             // --- FOG LAYER (CANVAS IMPLEMENTATION) ---
-            // Re-creating the "Pre-render" optimization for smooth performance
             const gradientCanvas = useMemo(() => {
                 const c = document.createElement('canvas');
                 c.width = 120; // 2 * radius (60)
@@ -513,6 +532,7 @@ Keep it practical, friendly, and use emojis. Language: Chinese. Use Markdown for
                 }
 
                 const ctx = canvas.getContext('2d');
+                
                 const size = map.getSize();
                 const dpr = window.devicePixelRatio || 1;
 
@@ -624,25 +644,17 @@ Keep it practical, friendly, and use emojis. Language: Chinese. Use Markdown for
                     markersRef.current.push(marker);
                 });
 
-                // Hiking Spots - THIS PART CAUSED THE ERROR
-                // WE CANNOT CALL useMemo HERE.
-                // Instead, we rely on the memoized `sortedSpots` which is calculated outside the effect,
-                // OR we filter inside the effect without memoization (since useEffect already runs on dependency change).
-                
-                // Since we need `visibleSpots` which is `hikingSpots` filtered by AI and Region.
-                // Let's recalculate it here simply. It's cheap.
-                
-                let currentVisibleSpots = hikingSpots;
-                if (aiFilteredIds) {
-                    currentVisibleSpots = currentVisibleSpots.filter(s => aiFilteredIds.includes(s.id));
-                } else if (regionFilter !== "All") {
-                    currentVisibleSpots = currentVisibleSpots.filter(s => s.region === regionFilter);
-                }
+                // Hiking Spots
+                const filteredSpots = regionFilter === "All" 
+                    ? hikingSpots 
+                    : hikingSpots.filter(s => s.region === regionFilter);
 
-                currentVisibleSpots.forEach(spot => {
+                filteredSpots.forEach(spot => {
                     const isVisited = visitedSpots.has(spot.id);
 
                     // Marker Styling
+                    // Visited: Greenish Emerald
+                    // Unvisited: BLUE (Requested)
                     let markerColor = isVisited ? '#10b981' : '#3b82f6';
                     let markerOpacity = 1; 
                     
@@ -688,7 +700,6 @@ Keep it practical, friendly, and use emojis. Language: Chinese. Use Markdown for
                 setVisitedSpots(newVisited);
             };
 
-            // This is for the SIDEBAR LIST
             const sortedSpots = useMemo(() => {
                 let spots = regionFilter === "All" ? hikingSpots : hikingSpots.filter(s => s.region === regionFilter);
                  // Apply AI Filter if exists
@@ -710,7 +721,7 @@ Keep it practical, friendly, and use emojis. Language: Chinese. Use Markdown for
                     {/* Sidebar Container - Mobile: Bottom Sheet / Desktop: Floating Panel */}
                     <div 
                         className={`
-                            fixed z-[1000] flex flex-col transition-transform duration-500 ease-in-out
+                            fixed z-[1000] flex flex-col transition-transform duration-500 ease-in-out overflow-hidden
                             glass-panel
                             
                             /* Mobile Styles (Bottom Sheet) */
@@ -811,10 +822,10 @@ Keep it practical, friendly, and use emojis. Language: Chinese. Use Markdown for
                                         <div className="space-y-3 pt-2 pb-10">
                                             <button onClick={(e) => toggleVisited(e, selectedSpot.id)} className={`w-full py-4 rounded-2xl font-bold transition-all flex justify-center items-center gap-2 ${visitedSpots.has(selectedSpot.id) ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-gray-900 text-white hover:bg-black shadow-lg'}`}><Icon name={visitedSpots.has(selectedSpot.id) ? "check" : "plus"} size={20} />{visitedSpots.has(selectedSpot.id) ? "Marked as Visited" : "Mark as Visited"}</button>
                                             <div className="grid grid-cols-2 gap-3">
-                                                <a href={selectedSpot.googleMapLink} target="_blank" className="flex justify-center items-center gap-2 bg-blue-50/80 hover:bg-blue-100 text-blue-700 font-bold py-3 rounded-xl transition-colors backdrop-blur-sm"><Icon name="map" size={18} /> Google Maps</a>
-                                                <a href={`https://www.alltrails.com/search?q=${encodeURIComponent(selectedSpot.name)}`} target="_blank" className="flex justify-center items-center gap-2 bg-green-50/80 hover:bg-green-100 text-green-700 font-bold py-3 rounded-xl transition-colors backdrop-blur-sm"><Icon name="tree-pine" size={18} /> AllTrails</a>
+                                                <a href={selectedSpot.googleMapLink} target="_blank" className="flex justify-center items-center gap-2 bg-blue-50/80 hover:bg-blue-100 text-blue-700 font-bold py-3 rounded-xl transition-colors backdrop-blur-sm" onClick={(e) => e.stopPropagation()}><Icon name="map" size={18} /> Google Maps</a>
+                                                <a href={`https://www.alltrails.com/search?q=${encodeURIComponent(selectedSpot.name)}`} target="_blank" className="flex justify-center items-center gap-2 bg-green-50/80 hover:bg-green-100 text-green-700 font-bold py-3 rounded-xl transition-colors backdrop-blur-sm" onClick={(e) => e.stopPropagation()}><Icon name="tree-pine" size={18} /> AllTrails</a>
                                             </div>
-                                            <a href={`https://www.komoot.com/discover/text?q=${encodeURIComponent(selectedSpot.name)}`} target="_blank" className="flex justify-center items-center gap-2 bg-lime-50/80 hover:bg-lime-100 text-lime-700 font-bold py-3 rounded-xl transition-colors backdrop-blur-sm"><Icon name="map-pin" size={18} /> Komoot</a>
+                                            <a href={`https://www.komoot.com/discover?q=${encodeURIComponent(selectedSpot.name)}`} target="_blank" className="flex justify-center items-center gap-2 bg-lime-50/80 hover:bg-lime-100 text-lime-700 font-bold py-3 rounded-xl transition-colors backdrop-blur-sm" onClick={(e) => e.stopPropagation()}><Icon name="map-pin" size={18} /> Komoot</a>
                                         </div>
                                     </div>
                                 </div>
