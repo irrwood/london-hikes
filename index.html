@@ -38,20 +38,28 @@
         .leaflet-bar a { background-color: white !important; color: #111827 !important; border-bottom: 1px solid #f3f4f6 !important; }
         .leaflet-bar a:hover { background-color: #f9fafb !important; }
         
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; background: transparent; } 
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar { width: 0px; background: transparent; } 
         
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
+        /* --- ANIMATIONS --- */
         @keyframes slideInRight {
-            from { transform: translateX(30px); opacity: 0; }
+            from { transform: translateX(100%); opacity: 0; }
             to { transform: translateX(0); opacity: 1; }
         }
-        .slide-in-right { 
-            animation: slideInRight 0.5s cubic-bezier(0.19, 1, 0.22, 1) forwards; 
+        .animate-slide-in-right { 
+            animation: slideInRight 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; 
         }
-        
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.3s ease-out forwards;
+        }
+
         .custom-div-icon { background: transparent; border: none; }
         
         .star-filled { color: #fbbf24; }
@@ -61,6 +69,20 @@
         .fog-layer-canvas {
             pointer-events: none;
             transition: opacity 0.3s ease;
+        }
+
+        /* Glassmorphism Utilities */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+        
+        .glass-header {
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
         }
 
         /* AI Markdown Styles */
@@ -280,15 +302,15 @@
 
             return (
                 <div className="absolute inset-0 z-[2000] bg-black/30 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
-                    <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden transform transition-all scale-100">
-                        <div className="p-6 bg-gradient-to-r from-emerald-600 to-teal-600 text-white relative">
-                            <button onClick={onClose} className="absolute top-4 right-4 text-white/80 hover:text-white">
-                                <Icon name="x" size={20} />
+                    <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden transform transition-all scale-100 glass-panel border-0">
+                        <div className="p-6 glass-header text-emerald-800 relative border-b border-white/50">
+                            <button onClick={onClose} className="absolute top-4 right-4 text-emerald-800/60 hover:text-emerald-800 transition-colors">
+                                <Icon name="x" size={24} />
                             </button>
-                            <h3 className="text-xl font-bold flex items-center gap-2">
-                                <Icon name="sparkles" size={20} /> AI 智能选路
+                            <h3 className="text-xl font-bold flex items-center gap-2 tracking-tight">
+                                <Icon name="sparkles" size={20} className="text-emerald-600" /> AI 智能选路
                             </h3>
-                            <p className="text-emerald-100 text-sm mt-1">输入您的偏好，AI 为您推荐最佳路线</p>
+                            <p className="text-emerald-600/80 text-sm mt-1 font-medium">输入您的偏好，AI 为您推荐最佳路线</p>
                         </div>
                         
                         <div className="p-6">
@@ -296,19 +318,19 @@
                                 value={prompt}
                                 onChange={(e) => setPrompt(e.target.value)}
                                 placeholder="例如：我想找一个适合带孩子、有瀑布且难度适中的徒步路线..."
-                                className="w-full h-32 p-4 bg-gray-50 border border-gray-200 rounded-xl text-gray-700 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none resize-none text-sm"
+                                className="w-full h-32 p-4 bg-white/50 border border-emerald-100 rounded-xl text-gray-700 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 outline-none resize-none text-sm placeholder-gray-400 transition-all"
                             />
                             
-                            <div className="mt-4 flex justify-end">
+                            <div className="mt-6 flex justify-end">
                                 <button 
                                     onClick={handleSubmit}
                                     disabled={isLoading || !prompt.trim()}
-                                    className={`px-6 py-2.5 rounded-full font-bold text-sm text-white flex items-center gap-2 transition-all ${isLoading ? 'bg-gray-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700 shadow-lg hover:shadow-emerald-500/30'}`}
+                                    className={`px-6 py-3 rounded-full font-bold text-sm text-white flex items-center gap-2 transition-all shadow-lg shadow-emerald-200/50 ${isLoading ? 'bg-gray-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700 hover:scale-105 active:scale-95'}`}
                                 >
                                     {isLoading ? (
-                                        <><Icon name="loader-2" className="animate-spin" size={16} /> 思考中...</>
+                                        <><Icon name="loader-2" className="animate-spin" size={18} /> 思考中...</>
                                     ) : (
-                                        <><Icon name="search" size={16} /> 开始推荐</>
+                                        <><Icon name="search" size={18} /> 开始推荐</>
                                     )}
                                 </button>
                             </div>
@@ -449,23 +471,31 @@ Keep it practical, friendly, and use emojis. Language: Chinese. Use Markdown for
                     L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { attribution: '&copy; OpenStreetMap &copy; CARTO', subdomains: 'abcd', maxZoom: 19 }).addTo(map);
                     L.control.zoom({ position: 'bottomright' }).addTo(map);
                     mapInstanceRef.current = map;
+
+                    // Create Canvas element for Fog Layer and append to overlayPane
                     const canvas = document.createElement('canvas');
                     canvas.className = 'fog-layer-canvas';
-                    canvas.style.display = 'none';
+                    canvas.style.display = 'none'; // Initially hidden
                     canvasRef.current = canvas;
-                    map.getPanes().overlayPane.appendChild(canvas);
+                    
+                    const overlayPane = map.getPanes().overlayPane;
+                    overlayPane.appendChild(canvas);
                 }
             }, []);
 
-            // --- FOG LAYER LOGIC (Same as optimized version) ---
+            // --- FOG LAYER (CANVAS IMPLEMENTATION) ---
+            // Re-creating the "Pre-render" optimization for smooth performance
             const gradientCanvas = useMemo(() => {
                 const c = document.createElement('canvas');
-                c.width = 120; c.height = 120;
+                c.width = 120; // 2 * radius (60)
+                c.height = 120;
                 const ctx = c.getContext('2d');
                 if(ctx) {
                     const grd = ctx.createRadialGradient(60, 60, 12, 60, 60, 60);
-                    grd.addColorStop(0, 'rgba(0,0,0,1)'); grd.addColorStop(1, 'rgba(0,0,0,0)');
-                    ctx.fillStyle = grd; ctx.fillRect(0,0,120,120);
+                    grd.addColorStop(0, 'rgba(0,0,0,1)'); // Core clear
+                    grd.addColorStop(1, 'rgba(0,0,0,0)'); // Edge fade
+                    ctx.fillStyle = grd;
+                    ctx.fillRect(0,0,120,120);
                 }
                 return c;
             }, []);
@@ -474,61 +504,96 @@ Keep it practical, friendly, and use emojis. Language: Chinese. Use Markdown for
                 const map = mapInstanceRef.current;
                 const canvas = canvasRef.current;
                 if (!map || !canvas) return;
-                if (!fogMode) { canvas.style.display = 'none'; return; } else { canvas.style.display = 'block'; }
+
+                if (!fogMode) {
+                    canvas.style.display = 'none';
+                    return;
+                } else {
+                    canvas.style.display = 'block';
+                }
+
                 const ctx = canvas.getContext('2d');
                 const size = map.getSize();
                 const dpr = window.devicePixelRatio || 1;
+
+                // Resize logic
                 if (canvas.width !== size.x * dpr || canvas.height !== size.y * dpr) {
-                    canvas.width = size.x * dpr; canvas.height = size.y * dpr;
-                    ctx.scale(dpr, dpr); canvas.style.width = size.x + 'px'; canvas.style.height = size.y + 'px';
+                    canvas.width = size.x * dpr;
+                    canvas.height = size.y * dpr;
+                    ctx.scale(dpr, dpr);
+                    canvas.style.width = size.x + 'px';
+                    canvas.style.height = size.y + 'px';
                 }
+                
+                // Position canvas at current view top-left
                 const bounds = map.getBounds();
                 const topLeft = map.latLngToLayerPoint(bounds.getNorthWest());
                 L.DomUtil.setPosition(canvas, topLeft);
+
+                // Clear
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                // 1. Fill Dark Fog
                 ctx.globalCompositeOperation = 'source-over';
                 ctx.fillStyle = 'rgba(20, 25, 35, 0.85)'; 
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // 2. Erase Holes
                 ctx.globalCompositeOperation = 'destination-out';
+
                 const drawHole = (lat, lng) => {
                     const point = map.latLngToLayerPoint([lat, lng]);
-                    const x = point.x - topLeft.x; const y = point.y - topLeft.y;
-                    if (x > -60 && x < canvas.width + 60 && y > -60 && y < canvas.height + 60) { ctx.drawImage(gradientCanvas, x - 60, y - 60); }
+                    // Adjust point relative to the canvas top-left
+                    const x = point.x - topLeft.x;
+                    const y = point.y - topLeft.y;
+                    
+                    // Optimization: only draw if within bounds
+                    if (x > -60 && x < canvas.width + 60 && y > -60 && y < canvas.height + 60) {
+                         ctx.drawImage(gradientCanvas, x - 60, y - 60);
+                    }
                 };
-                hikingSpots.forEach(spot => { if (visitedSpots.has(spot.id)) drawHole(spot.coords[0], spot.coords[1]); });
-                USER_HISTORY_LOCATIONS.forEach(loc => { drawHole(loc.coords[0], loc.coords[1]); });
+
+                hikingSpots.forEach(spot => {
+                    if (visitedSpots.has(spot.id)) {
+                        drawHole(spot.coords[0], spot.coords[1]);
+                    }
+                });
+
+                USER_HISTORY_LOCATIONS.forEach(loc => {
+                    drawHole(loc.coords[0], loc.coords[1]);
+                });
+
                 ctx.globalCompositeOperation = 'source-over';
             };
 
+            // Hook up map events for canvas redraw
             useEffect(() => {
                 const map = mapInstanceRef.current;
                 if (!map) return;
-                const refreshFog = () => { requestAnimationFrame(drawFog); };
+
+                // Helper to schedule update
+                const refreshFog = () => {
+                    requestAnimationFrame(drawFog);
+                };
+
+                // Always run once on state change to handle toggle ON/OFF visibility
                 refreshFog();
-                if (fogMode) { map.on('moveend', refreshFog); map.on('zoomend', refreshFog); map.on('resize', refreshFog); }
-                return () => { map.off('moveend', refreshFog); map.off('zoomend', refreshFog); map.off('resize', refreshFog); };
+
+                if (fogMode) {
+                    map.on('moveend', refreshFog);
+                    map.on('zoomend', refreshFog);
+                    map.on('resize', refreshFog);
+                }
+
+                return () => {
+                    map.off('moveend', refreshFog);
+                    map.off('zoomend', refreshFog);
+                    map.off('resize', refreshFog);
+                };
             }, [fogMode, visitedSpots, hikingSpots, gradientCanvas]);
 
-            // --- MARKERS LOGIC & FILTERING ---
-            const visibleSpots = useMemo(() => {
-                let spots = hikingSpots;
-                
-                // Apply AI Filter if exists
-                if (aiFilteredIds) {
-                    spots = spots.filter(s => aiFilteredIds.includes(s.id));
-                } 
-                // Otherwise apply Region Filter
-                else if (regionFilter !== "All") {
-                    spots = spots.filter(s => s.region === regionFilter);
-                }
-                
-                return spots.sort((a, b) => {
-                    if (sortBy === 'heat') return b.heat - a.heat;
-                    if (sortBy === 'rating') return b.rating - a.rating;
-                    return 0;
-                });
-            }, [hikingSpots, regionFilter, sortBy, aiFilteredIds]);
 
+            // --- MARKERS LOGIC ---
             useEffect(() => {
                 const map = mapInstanceRef.current;
                 if (!map) return;
@@ -538,31 +603,104 @@ Keep it practical, friendly, and use emojis. Language: Chinese. Use Markdown for
 
                 // User History Markers
                 USER_HISTORY_LOCATIONS.forEach(loc => {
-                    const customIcon = L.divIcon({ className: 'custom-div-icon', html: `<div style="background-color: #9ca3af; width: 8px; height: 8px; border-radius: 50%; border: 1px solid white; box-shadow: 0 1px 2px rgba(0,0,0,0.2);"></div>`, iconSize: [8, 8], iconAnchor: [4, 4] });
-                    const marker = L.marker(loc.coords, { icon: customIcon, zIndexOffset: 100 }).addTo(map);
-                    marker.bindTooltip(loc.name, { direction: 'top', offset: [0, -5], className: 'bg-white px-2 py-1 rounded-lg shadow-sm text-xs text-gray-600 font-medium border border-gray-100' });
+                    const customIcon = L.divIcon({
+                        className: 'custom-div-icon',
+                        html: `<div style="background-color: #9ca3af; width: 8px; height: 8px; border-radius: 50%; border: 1px solid white; box-shadow: 0 1px 2px rgba(0,0,0,0.2);"></div>`,
+                        iconSize: [8, 8],
+                        iconAnchor: [4, 4]
+                    });
+
+                    const marker = L.marker(loc.coords, { 
+                        icon: customIcon, 
+                        zIndexOffset: 100,
+                    }).addTo(map);
+                    
+                    marker.bindTooltip(loc.name, {
+                        direction: 'top',
+                        offset: [0, -5],
+                        className: 'bg-white px-2 py-1 rounded-lg shadow-sm text-xs text-gray-600 font-medium border border-gray-100'
+                    });
+
                     markersRef.current.push(marker);
                 });
 
-                // Hiking Spots
-                visibleSpots.forEach(spot => {
+                // Hiking Spots - THIS PART CAUSED THE ERROR
+                // WE CANNOT CALL useMemo HERE.
+                // Instead, we rely on the memoized `sortedSpots` which is calculated outside the effect,
+                // OR we filter inside the effect without memoization (since useEffect already runs on dependency change).
+                
+                // Since we need `visibleSpots` which is `hikingSpots` filtered by AI and Region.
+                // Let's recalculate it here simply. It's cheap.
+                
+                let currentVisibleSpots = hikingSpots;
+                if (aiFilteredIds) {
+                    currentVisibleSpots = currentVisibleSpots.filter(s => aiFilteredIds.includes(s.id));
+                } else if (regionFilter !== "All") {
+                    currentVisibleSpots = currentVisibleSpots.filter(s => s.region === regionFilter);
+                }
+
+                currentVisibleSpots.forEach(spot => {
                     const isVisited = visitedSpots.has(spot.id);
+
+                    // Marker Styling
                     let markerColor = isVisited ? '#10b981' : '#3b82f6';
-                    const customIcon = L.divIcon({ className: 'custom-div-icon', html: `<div style="background-color: ${markerColor}; width: 14px; height: 14px; border-radius: 50%; border: 3px solid white; box-shadow: 0 4px 6px rgba(0,0,0,0.15);"></div>`, iconSize: [14, 14], iconAnchor: [7, 7] });
-                    const marker = L.marker(spot.coords, { icon: customIcon, zIndexOffset: isVisited ? 1000 : 2000 }).addTo(map);
-                    marker.on('click', () => { setSelectedSpot(spot); setSidebarOpen(true); setAiPlannerContent(""); map.flyTo(spot.coords, 11, { duration: 1.5 }); });
-                    marker.bindTooltip(`<b class="font-sans text-sm">${spot.name}</b>`, { permanent: false, direction: 'top', offset: [0, -10], className: 'bg-white px-3 py-1.5 rounded-xl shadow-lg text-gray-800 font-medium border border-gray-100 transform translate-y-1' });
+                    let markerOpacity = 1; 
+                    
+                    const customIcon = L.divIcon({
+                        className: 'custom-div-icon',
+                        html: `<div style="background-color: ${markerColor}; width: 14px; height: 14px; border-radius: 50%; border: 3px solid white; box-shadow: 0 4px 6px rgba(0,0,0,0.15);"></div>`,
+                        iconSize: [14, 14],
+                        iconAnchor: [7, 7]
+                    });
+
+                    const marker = L.marker(spot.coords, { icon: customIcon, opacity: markerOpacity, zIndexOffset: isVisited ? 1000 : 2000 }).addTo(map);
+                    
+                    marker.on('click', () => {
+                        setSelectedSpot(spot);
+                        setSidebarOpen(true);
+                         map.flyTo(spot.coords, 11, { duration: 1.5 });
+                    });
+
+                    marker.bindTooltip(`<b class="font-sans text-sm">${spot.name}</b>`, {
+                        permanent: false,
+                        direction: 'top',
+                        offset: [0, -10],
+                        className: 'bg-white px-3 py-1.5 rounded-xl shadow-lg text-gray-800 font-medium border border-gray-100 transform translate-y-1'
+                    });
+
                     markersRef.current.push(marker);
                 });
-            }, [fogMode, visibleSpots, visitedSpots]); // Depend on visibleSpots now
+
+            }, [fogMode, hikingSpots, visitedSpots, regionFilter, aiFilteredIds]); 
 
             const handleCardClick = (spot) => {
                 setSelectedSpot(spot);
-                setAiPlannerContent(""); // Reset plan
-                if (mapInstanceRef.current) mapInstanceRef.current.flyTo(spot.coords, 12, { duration: 1.5 });
+                if (mapInstanceRef.current) {
+                    mapInstanceRef.current.flyTo(spot.coords, 12, { duration: 1.5 });
+                }
             };
 
-            const toggleVisited = (e, id) => { e.stopPropagation(); const newVisited = new Set(visitedSpots); if (newVisited.has(id)) newVisited.delete(id); else newVisited.add(id); setVisitedSpots(newVisited); };
+            const toggleVisited = (e, id) => {
+                e.stopPropagation();
+                const newVisited = new Set(visitedSpots);
+                if (newVisited.has(id)) newVisited.delete(id);
+                else newVisited.add(id);
+                setVisitedSpots(newVisited);
+            };
+
+            // This is for the SIDEBAR LIST
+            const sortedSpots = useMemo(() => {
+                let spots = regionFilter === "All" ? hikingSpots : hikingSpots.filter(s => s.region === regionFilter);
+                 // Apply AI Filter if exists
+                if (aiFilteredIds) {
+                    spots = spots.filter(s => aiFilteredIds.includes(s.id));
+                }
+                return [...spots].sort((a, b) => {
+                    if (sortBy === 'heat') return b.heat - a.heat;
+                    if (sortBy === 'rating') return b.rating - a.rating;
+                    return 0;
+                });
+            }, [sortBy, hikingSpots, regionFilter, aiFilteredIds]);
 
             return (
                 <div className="flex h-full w-full relative overflow-hidden bg-gray-200">
@@ -572,52 +710,56 @@ Keep it practical, friendly, and use emojis. Language: Chinese. Use Markdown for
                     {/* Sidebar Container - Mobile: Bottom Sheet / Desktop: Floating Panel */}
                     <div 
                         className={`
-                            fixed z-[1000] bg-white shadow-2xl flex flex-col transition-transform duration-500 ease-in-out
+                            fixed z-[1000] flex flex-col transition-transform duration-500 ease-in-out
+                            glass-panel
                             
                             /* Mobile Styles (Bottom Sheet) */
-                            bottom-0 left-0 w-full h-[60vh] rounded-t-3xl rounded-b-none
+                            bottom-0 left-0 w-full h-[60vh] rounded-t-3xl rounded-b-none border-b-0
                             ${sidebarOpen ? 'translate-y-0' : 'translate-y-full'}
 
                             /* Desktop Styles (Floating Panel) */
-                            md:absolute md:top-4 md:bottom-4 md:left-4 md:h-auto md:w-full md:max-w-md md:rounded-3xl
+                            md:absolute md:top-4 md:bottom-4 md:left-4 md:h-auto md:w-full md:max-w-md md:rounded-3xl md:border-b
                             md:${sidebarOpen ? 'translate-x-0 translate-y-0' : '-translate-x-[110%] translate-y-0'}
                         `}
                     >
                         
                         {/* Header */}
-                        <div className={`bg-white rounded-t-3xl z-10 transition-all duration-300 ${selectedSpot ? 'h-0 overflow-hidden opacity-0' : 'p-6 pb-2 h-auto opacity-100'}`}>
+                        <div className={`glass-header rounded-t-3xl z-10 transition-all duration-300 ${selectedSpot ? 'h-0 overflow-hidden opacity-0' : 'p-6 pb-2 h-auto opacity-100'}`}>
                             {!selectedSpot && (
                                 <>
                                     <div className="flex justify-between items-start mb-2">
                                         <div>
-                                            <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight leading-none">Where to?</h1>
+                                            <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight leading-none">
+                                                Where to?
+                                            </h1>
                                             <p className="text-gray-500 text-sm font-medium mt-1">UK Hiking Guide</p>
                                         </div>
                                         {/* Mobile Close Button */}
-                                        <button onClick={() => setSidebarOpen(false)} className="md:hidden p-2 bg-gray-100 hover:bg-gray-200 rounded-full transition-colors"><Icon name="chevron-down" size={24} className="text-gray-600" /></button>
+                                        <button onClick={() => setSidebarOpen(false)} className="md:hidden p-2 bg-white/50 hover:bg-white/80 rounded-full transition-colors"><Icon name="chevron-down" size={24} className="text-gray-600" /></button>
                                         {/* Desktop Close Button */}
-                                        <button onClick={() => setSidebarOpen(false)} className="hidden md:block p-2 bg-gray-100 hover:bg-gray-200 rounded-full transition-colors"><Icon name="x" size={20} className="text-gray-600" /></button>
+                                        <button onClick={() => setSidebarOpen(false)} className="hidden md:block p-2 bg-white/50 hover:bg-white/80 rounded-full transition-colors"><Icon name="x" size={20} className="text-gray-600" /></button>
                                     </div>
 
-                                    {/* AI Smart Scout Button - GREEN STYLE */}
-                                    <button 
+                                    {/* AI Smart Scout Search Bar Style - UPDATED */}
+                                    <div 
                                         onClick={() => setShowAiModal(true)}
-                                        className="w-full mt-2 mb-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white py-3 rounded-2xl font-bold shadow-lg shadow-emerald-200 flex items-center justify-center gap-2 transition-all transform hover:scale-[1.02]"
+                                        className="mt-4 mb-2 bg-gray-50 hover:bg-white border border-gray-200 hover:border-emerald-300 py-3 px-4 rounded-xl flex items-center gap-3 cursor-pointer transition-all shadow-sm group"
                                     >
-                                        <Icon name="sparkles" size={18} /> ✨ AI 智能选路
-                                    </button>
+                                        <Icon name="sparkles" size={18} className="text-emerald-600 group-hover:scale-110 transition-transform" />
+                                        <span className="text-sm font-medium text-gray-500 group-hover:text-gray-800">Ask AI for the perfect hike...</span>
+                                    </div>
 
-                                    <div className="mt-1">
-                                        <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
-                                            <button onClick={() => {setRegionFilter("All"); setAiFilteredIds(null);}} className={`whitespace-nowrap px-4 py-2 rounded-full text-sm font-semibold transition-all ${!aiFilteredIds && regionFilter === "All" ? 'bg-black text-white shadow-lg' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>全部</button>
+                                    <div className="mt-2">
+                                        <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar px-1">
+                                            <button onClick={() => {setRegionFilter("All"); setAiFilteredIds(null);}} className={`whitespace-nowrap px-4 py-2 rounded-full text-sm font-semibold transition-all ${!aiFilteredIds && regionFilter === "All" ? 'bg-black text-white shadow-lg' : 'bg-white/60 text-gray-600 hover:bg-white/90'}`}>All</button>
                                             {regions.filter(r => r !== "All").map(region => (
-                                                <button key={region} onClick={() => {setRegionFilter(region); setAiFilteredIds(null);}} className={`whitespace-nowrap px-4 py-2 rounded-full text-sm font-semibold transition-all ${!aiFilteredIds && regionFilter === region ? 'bg-black text-white shadow-lg' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>{region}</button>
+                                                <button key={region} onClick={() => {setRegionFilter(region); setAiFilteredIds(null);}} className={`whitespace-nowrap px-4 py-2 rounded-full text-sm font-semibold transition-all ${!aiFilteredIds && regionFilter === region ? 'bg-black text-white shadow-lg' : 'bg-white/60 text-gray-600 hover:bg-white/90'}`}>{region}</button>
                                             ))}
                                         </div>
                                     </div>
                                     {aiFilteredIds && (
-                                        <div className="flex items-center gap-2 mt-2 bg-emerald-50 p-2 rounded-lg text-emerald-700 text-xs font-bold">
-                                            <Icon name="filter" size={12}/> 已应用 AI 筛选结果 <button onClick={() => setAiFilteredIds(null)} className="ml-auto text-emerald-500 hover:underline">清除</button>
+                                        <div className="flex items-center gap-2 mt-2 bg-emerald-50/80 p-2 rounded-lg text-emerald-700 text-xs font-bold backdrop-blur-sm">
+                                            <Icon name="filter" size={12}/> AI Filter Active <button onClick={() => setAiFilteredIds(null)} className="ml-auto text-emerald-500 hover:underline">Clear</button>
                                         </div>
                                     )}
                                 </>
@@ -627,8 +769,8 @@ Keep it practical, friendly, and use emojis. Language: Chinese. Use Markdown for
                         {/* Content */}
                         <div className="flex-1 overflow-y-auto custom-scrollbar px-6 pb-6">
                             {selectedSpot ? (
-                                <div className="slide-in-right pt-6 h-full flex flex-col">
-                                    <button onClick={() => setSelectedSpot(null)} className="mb-4 inline-flex items-center gap-2 text-sm font-bold text-gray-500 hover:text-black transition-colors bg-gray-100 px-3 py-1.5 rounded-full w-fit">
+                                <div className="animate-slide-in-right pt-6 h-full flex flex-col">
+                                    <button onClick={() => setSelectedSpot(null)} className="mb-4 inline-flex items-center gap-2 text-sm font-bold text-gray-500 hover:text-black transition-colors bg-white/80 backdrop-blur-md px-4 py-2 rounded-full w-fit shadow-sm">
                                         <Icon name="arrow-left" size={16} /> Back
                                     </button>
                                     
@@ -640,24 +782,24 @@ Keep it practical, friendly, and use emojis. Language: Chinese. Use Markdown for
                                         </div>
 
                                         <div className="grid grid-cols-2 gap-3">
-                                            <div className="bg-gray-50 p-3 rounded-2xl"><div className="text-xs font-bold text-gray-400 uppercase">Rating</div><div className="flex items-center gap-1 mt-1"><span className="text-xl font-bold text-gray-900">{selectedSpot.rating}</span><Icon name="star" size={16} className="text-yellow-400 fill-yellow-400" /><span className="text-xs text-gray-400 font-medium ml-1">({selectedSpot.reviews})</span></div></div>
-                                            <div className="bg-gray-50 p-3 rounded-2xl"><div className="text-xs font-bold text-gray-400 uppercase">Difficulty</div><div className={`text-sm font-bold mt-1.5 ${selectedSpot.difficulty.includes('Hard') ? 'text-red-600' : (selectedSpot.difficulty.includes('Mod') ? 'text-orange-600' : 'text-green-600')}`}>{selectedSpot.difficulty}</div></div>
+                                            <div className="bg-white/60 p-4 rounded-2xl backdrop-blur-sm"><div className="text-xs font-bold text-gray-400 uppercase">Rating</div><div className="flex items-center gap-1 mt-1"><span className="text-xl font-bold text-gray-900">{selectedSpot.rating}</span><Icon name="star" size={16} className="text-yellow-400 fill-yellow-400" /><span className="text-xs text-gray-400 font-medium ml-1">({selectedSpot.reviews})</span></div></div>
+                                            <div className="bg-white/60 p-4 rounded-2xl backdrop-blur-sm"><div className="text-xs font-bold text-gray-400 uppercase">Difficulty</div><div className={`text-sm font-bold mt-1.5 ${selectedSpot.difficulty.includes('Hard') ? 'text-red-600' : (selectedSpot.difficulty.includes('Mod') ? 'text-orange-600' : 'text-green-600')}`}>{selectedSpot.difficulty}</div></div>
                                         </div>
 
                                         <p className="text-gray-600 leading-relaxed font-medium">{selectedSpot.description}</p>
                                         
                                         {/* AI PLANNER SECTION - GREEN STYLE */}
-                                        <div className="bg-gradient-to-br from-emerald-50 to-teal-50 p-5 rounded-2xl border border-emerald-100">
+                                        <div className="bg-gradient-to-br from-emerald-50/80 to-teal-50/80 p-5 rounded-2xl border border-emerald-100 backdrop-blur-sm">
                                             <div className="flex justify-between items-center mb-3">
-                                                <h3 className="font-bold text-emerald-900 flex items-center gap-2"><Icon name="bot" size={18}/> AI 助手</h3>
+                                                <h3 className="font-bold text-emerald-900 flex items-center gap-2"><Icon name="bot" size={18}/> AI Planner</h3>
                                                 {!aiPlannerContent && !isAiPlanning && (
-                                                    <button onClick={() => handleAiPlan(selectedSpot)} className="text-xs bg-emerald-600 text-white px-3 py-1.5 rounded-full font-bold hover:bg-emerald-700 transition-colors">✨ 生成攻略</button>
+                                                    <button onClick={() => handleAiPlan(selectedSpot)} className="text-xs bg-emerald-600 text-white px-3 py-1.5 rounded-full font-bold hover:bg-emerald-700 transition-colors shadow-sm">✨ Generate Plan</button>
                                                 )}
                                             </div>
                                             
                                             {isAiPlanning && (
                                                 <div className="flex items-center gap-2 text-sm text-emerald-600 animate-pulse">
-                                                    <Icon name="loader-2" className="animate-spin" size={16} /> 正在为您规划行程...
+                                                    <Icon name="loader-2" className="animate-spin" size={16} /> Planning your trip...
                                                 </div>
                                             )}
                                             
@@ -666,33 +808,33 @@ Keep it practical, friendly, and use emojis. Language: Chinese. Use Markdown for
                                             )}
                                         </div>
 
-                                        <div className="space-y-3 pt-2">
-                                            <button onClick={(e) => toggleVisited(e, selectedSpot.id)} className={`w-full py-4 rounded-2xl font-bold transition-all flex justify-center items-center gap-2 ${visitedSpots.has(selectedSpot.id) ? 'bg-green-50 text-green-700' : 'bg-gray-900 text-white hover:bg-black shadow-lg'}`}><Icon name={visitedSpots.has(selectedSpot.id) ? "check" : "plus"} size={20} />{visitedSpots.has(selectedSpot.id) ? "Marked as Visited" : "Mark as Visited"}</button>
+                                        <div className="space-y-3 pt-2 pb-10">
+                                            <button onClick={(e) => toggleVisited(e, selectedSpot.id)} className={`w-full py-4 rounded-2xl font-bold transition-all flex justify-center items-center gap-2 ${visitedSpots.has(selectedSpot.id) ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-gray-900 text-white hover:bg-black shadow-lg'}`}><Icon name={visitedSpots.has(selectedSpot.id) ? "check" : "plus"} size={20} />{visitedSpots.has(selectedSpot.id) ? "Marked as Visited" : "Mark as Visited"}</button>
                                             <div className="grid grid-cols-2 gap-3">
-                                                <a href={selectedSpot.googleMapLink} target="_blank" className="flex justify-center items-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold py-3 rounded-xl transition-colors"><Icon name="map" size={18} /> Google Maps</a>
-                                                <a href={`https://www.alltrails.com/search?q=${encodeURIComponent(selectedSpot.name)}`} target="_blank" className="flex justify-center items-center gap-2 bg-green-50 hover:bg-green-100 text-green-700 font-bold py-3 rounded-xl transition-colors"><Icon name="tree-pine" size={18} /> AllTrails</a>
+                                                <a href={selectedSpot.googleMapLink} target="_blank" className="flex justify-center items-center gap-2 bg-blue-50/80 hover:bg-blue-100 text-blue-700 font-bold py-3 rounded-xl transition-colors backdrop-blur-sm"><Icon name="map" size={18} /> Google Maps</a>
+                                                <a href={`https://www.alltrails.com/search?q=${encodeURIComponent(selectedSpot.name)}`} target="_blank" className="flex justify-center items-center gap-2 bg-green-50/80 hover:bg-green-100 text-green-700 font-bold py-3 rounded-xl transition-colors backdrop-blur-sm"><Icon name="tree-pine" size={18} /> AllTrails</a>
                                             </div>
-                                            <a href={`https://www.komoot.com/discover/text?q=${encodeURIComponent(selectedSpot.name)}`} target="_blank" className="flex justify-center items-center gap-2 bg-lime-50 hover:bg-lime-100 text-lime-700 font-bold py-3 rounded-xl transition-colors"><Icon name="map-pin" size={18} /> Komoot</a>
+                                            <a href={`https://www.komoot.com/discover/text?q=${encodeURIComponent(selectedSpot.name)}`} target="_blank" className="flex justify-center items-center gap-2 bg-lime-50/80 hover:bg-lime-100 text-lime-700 font-bold py-3 rounded-xl transition-colors backdrop-blur-sm"><Icon name="map-pin" size={18} /> Komoot</a>
                                         </div>
                                     </div>
                                 </div>
                             ) : (
-                                <div className="space-y-3 pt-2">
-                                    {visibleSpots.map(spot => {
+                                <div className="space-y-3 pt-2 pb-10">
+                                    {sortedSpots.map(spot => {
                                         const isVisited = visitedSpots.has(spot.id);
                                         return (
-                                            <div key={spot.id} onClick={() => handleCardClick(spot)} className="group bg-white p-0 rounded-2xl transition-all hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-0 pb-4 mb-2">
+                                            <div key={spot.id} onClick={() => handleCardClick(spot)} className="group bg-white/40 backdrop-blur-sm p-0 rounded-2xl transition-all hover:bg-white/80 cursor-pointer border-b border-gray-100/50 last:border-0 pb-4 mb-2 animate-fade-in">
                                                 <div className="flex justify-between items-start">
                                                     <div className="flex-1">
                                                         <h3 className="font-bold text-gray-900 text-lg group-hover:text-blue-700 transition-colors">{spot.name}</h3>
                                                         <p className="text-sm text-gray-500 font-medium mt-0.5">{spot.location}</p>
                                                         <div className="flex items-center gap-3 mt-2">
-                                                            <div className="flex items-center gap-1 bg-gray-100 px-2 py-0.5 rounded-md"><Icon name="star" size={12} className="text-gray-900 fill-gray-900"/><span className="text-xs font-bold text-gray-900">{spot.rating}</span></div>
+                                                            <div className="flex items-center gap-1 bg-white/60 px-2 py-0.5 rounded-md border border-gray-100"><Icon name="star" size={12} className="text-gray-900 fill-gray-900"/><span className="text-xs font-bold text-gray-900">{spot.rating}</span></div>
                                                             <span className="text-xs font-bold text-gray-400">{spot.length}</span>
                                                             {isVisited && <span className="text-xs font-bold text-green-600 flex items-center gap-1"><Icon name="check" size={12} strokeWidth={3} /> Visited</span>}
                                                         </div>
                                                     </div>
-                                                    <div className="bg-gray-100 p-2 rounded-full group-hover:bg-gray-200 transition-colors"><Icon name="chevron-right" size={20} className="text-gray-400 group-hover:text-gray-600" /></div>
+                                                    <div className="bg-white/50 p-2 rounded-full group-hover:bg-white transition-colors"><Icon name="chevron-right" size={20} className="text-gray-400 group-hover:text-gray-600" /></div>
                                                 </div>
                                             </div>
                                         );
@@ -701,24 +843,11 @@ Keep it practical, friendly, and use emojis. Language: Chinese. Use Markdown for
                             )}
                         </div>
                         {/* Bottom Fade */}
-                        <div className="absolute bottom-0 left-0 w-full h-12 bg-gradient-to-t from-white to-transparent rounded-b-none pointer-events-none"></div>
+                        <div className="absolute bottom-0 left-0 w-full h-24 bg-gradient-to-t from-white to-transparent rounded-b-none pointer-events-none z-20"></div>
                     </div>
 
-                    {/* Toggle Button (Bottom Center on Mobile, Top Left on Desktop) */}
-                    {!sidebarOpen && (
-                        <button 
-                            onClick={() => setSidebarOpen(true)} 
-                            className={`
-                                absolute z-[500] bg-white p-4 rounded-full shadow-xl hover:bg-gray-50 text-gray-900 transition-transform hover:scale-110
-                                md:top-6 md:left-6
-                                bottom-6 left-1/2 -translate-x-1/2
-                            `}
-                        >
-                            <Icon name="menu" strokeWidth={2.5} />
-                        </button>
-                    )}
+                    {!sidebarOpen && <button onClick={() => setSidebarOpen(true)} className="absolute top-6 left-6 z-[500] bg-white p-4 rounded-full shadow-xl hover:bg-gray-50 text-gray-900 transition-transform hover:scale-110"><Icon name="menu" strokeWidth={2.5} /></button>}
 
-                    {/* Fog Mode Button */}
                     <div className="absolute top-6 right-6 z-[500] flex flex-col gap-3 items-end">
                         <button onClick={() => setFogMode(!fogMode)} className={`flex items-center gap-2 px-5 py-3 rounded-full shadow-xl font-bold transition-all transform hover:scale-105 ${fogMode ? 'bg-gray-900 text-white' : 'bg-white text-gray-900'}`}><Icon name={fogMode ? "eye-off" : "eye"} size={20} /><span className="hidden md:inline">{fogMode ? "Fog Mode On" : "Fog Mode Off"}</span></button>
                     </div>
