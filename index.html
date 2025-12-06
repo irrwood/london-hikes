@@ -24,27 +24,22 @@
     <script src="https://unpkg.com/lucide@latest"></script>
 
     <style>
-        /* Using Inter to mimic the clean, humanist sans-serif feel of Johnston */
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
         
         body { margin: 0; padding: 0; font-family: 'Inter', sans-serif; background-color: #e5e7eb; }
         #map { height: 100%; width: 100%; z-index: 0; }
         
-        /* Leaflet Customization to match clean style */
         .leaflet-popup-content-wrapper { border-radius: 1rem; padding: 0; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1); }
         .leaflet-popup-content { margin: 0; }
         .leaflet-control-zoom { border: none !important; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1) !important; border-radius: 0.75rem !important; overflow: hidden; }
         .leaflet-bar a { background-color: white !important; color: #111827 !important; border-bottom: 1px solid #f3f4f6 !important; }
         .leaflet-bar a:hover { background-color: #f9fafb !important; }
         
-        /* Custom Scrollbar - Minimalist */
-        .custom-scrollbar::-webkit-scrollbar { width: 0px; background: transparent; } /* Hidden scrollbar for cleaner look, scroll still works */
+        .custom-scrollbar::-webkit-scrollbar { width: 0px; background: transparent; } 
         
-        /* Hide scrollbar for horizontal regions */
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-        /* Animation: Slide In Right (Non-linear, Silky) */
         @keyframes slideInRight {
             from { transform: translateX(30px); opacity: 0; }
             to { transform: translateX(0); opacity: 1; }
@@ -55,27 +50,8 @@
         
         .custom-div-icon { background: transparent; border: none; }
         
-        /* Star Rating */
         .star-filled { color: #fbbf24; }
         .star-empty { color: #d1d5db; }
-
-        /* Fog Canvas Layer */
-        #fog-canvas {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 400;
-            pointer-events: none;
-            transition: opacity 0.5s ease-in-out;
-        }
-
-        /* TfL Style Specifics */
-        .tfl-shadow { box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
-        .tfl-card { background: white; border-radius: 1.5rem; }
-        .tfl-blue { color: #0019a8; }
-        .tfl-bg-blue { background-color: #0019a8; }
     </style>
 </head>
 <body class="h-screen w-screen overflow-hidden relative">
@@ -164,12 +140,9 @@
             { name: "Hassocks", coords: [50.923, -0.142] }
         ];
 
-        // Raw Text List
         const USER_RAW_LIST = `Eastwell Manor, Champneys Hotel & Spa, Margate, Dulwich Park, Crystal Palace Park, Croydon, National Trust - Headley Heath, Oak Trail Trailhead, Theydon Bois Golf Club, Drumsheds, Vue Cinema London - North Finchley, River Chess, Stocker's Lake Nature Reserve, Alexandra Park, Royal Air Force Museum London, Richmond, Tenpin Acton, Hastings Country Park, Wanstead Flats, Walthamstow Wetlands, London Wildlife Trust, Hurst Park, Otford Kent Circular Walk, Glynde, Brighton, Dover, Rydal Cave, Keswick, Dunseverick Castle, Giant's Causeway, The Dark Hedges, Belfast, Edinburgh, Waterhead, Bowness-on-Windermere, Windermere, York, Nevis Range Gondola Top, Inverness, Urquhart Castle, Pitlochry, Portree, The Brother’s Point, Kyle of Lochalsh, Dornie, Willen Lake, Cambridge, Preston Campsite, Birling Gap, Fairlop Waters Country Park, Hadleigh Castle, Oxford, Gomshall, The Farmer’s Dog, Stow-on-the-Wold, Bourton-on-the-Water, Bicester, Diddly Squat Farm Shop, Chippenham, New Forest National Park, Chesham, Dorking, Betws-y-Coed, Dolgarrog, Conwy Castle, Llandudno, Chester, Windsor Castle, Hampton Court Palace, Royal Botanic Gardens, Kew, WWT London Wetland Centre, Richmond Park, Reading, Box Hill, Epping Forest, Wanstead Park, Herne Bay, Eynsford, Knole Park, Chatham, Snowdon, Hungerford, Cotswolds, River Coln, Godalming, Guildford, Sandhurst, Birmingham, Pen y Fan, Bath, Durdle Door, Portsmouth, Weybridge, Ivinghoe, Southend-on-Sea, Canterbury, Folkestone, Ardingly, Balcombe, Seaford, Hastings, Newhaven, Lewes, Hassocks`;
 
-        // --- EXISTING HIKING SPOTS (Data Same as Before) ---
         const initialHikingSpots = [
-            // --- SCOTLAND ---
             { id: 201, name: "本尼维斯山 (Ben Nevis)", region: "Scotland", routeName: "Mountain Track", location: "Fort William", coords: [56.7969, -5.0036], heat: 99, rating: 4.8, reviews: 4500, length: "17.0 km", description: "英国最高峰，苏格兰高地的象征。", difficulty: "困难 (Hard)", tags: ["最高峰", "挑战", "必去"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Ben+Nevis+Visitor+Centre" },
             { id: 202, name: "斯托尔老人石 (Old Man of Storr)", region: "Scotland", routeName: "The Storr Circular", location: "Isle of Skye", coords: [57.5073, -6.1746], heat: 97, rating: 4.7, reviews: 3800, length: "4.5 km", description: "斯凯岛的奇特岩石景观，如同外星表面。", difficulty: "中等 (Moderate)", tags: ["奇石", "斯凯岛", "摄影"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Old+Man+of+Storr+Car+Park" },
             { id: 203, name: "仙女池 (Fairy Pools)", region: "Scotland", routeName: "Coire na Creiche Loop", location: "Isle of Skye", coords: [57.2504, -6.2737], heat: 96, rating: 4.6, reviews: 3200, length: "3.2 km", description: "库林山脉下的蓝色水潭和瀑布。", difficulty: "容易 (Easy)", tags: ["瀑布", "野泳", "网红"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Fairy+Pools+Car+Park" },
@@ -177,39 +150,27 @@
             { id: 205, name: "奎雷英山口 (The Quiraing)", region: "Scotland", routeName: "Quiraing Circuit", location: "Isle of Skye", coords: [57.6282, -6.2907], heat: 95, rating: 4.9, reviews: 2900, length: "6.8 km", description: "壮观的滑坡地貌，悬崖与尖塔。", difficulty: "困难 (Hard)", tags: ["地质奇观", "绝景", "环线"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=The+Quiraing+Car+Park" },
             { id: 206, name: "迷失山谷 (Lost Valley)", region: "Scotland", routeName: "Coire Gabhail", location: "Glencoe", coords: [56.6678, -4.9867], heat: 92, rating: 4.8, reviews: 1200, length: "4.0 km", description: "麦克唐纳家族曾经藏匿牛群的隐秘山谷，被壮丽的三姐妹山环绕。", difficulty: "困难 (Hard)", tags: ["峡谷", "历史", "绝景"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Lost+Valley+Glencoe" },
             { id: 207, name: "科尼克山 (Conic Hill)", region: "Scotland", routeName: "Balmaha Circular", location: "Loch Lomond", coords: [56.0860, -4.5230], heat: 88, rating: 4.7, reviews: 2100, length: "4.0 km", description: "洛蒙德湖的最佳观景点，正处于高地与低地的地质分界线上。", difficulty: "中等 (Moderate)", tags: ["湖景", "地质", "短途"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Conic+Hill+Balmaha" },
-
-            // --- WALES ---
             { id: 301, name: "斯诺登峰 (Snowdon)", region: "Wales", routeName: "Pyg & Miners' Track", location: "Snowdonia", coords: [53.0685, -4.0763], heat: 98, rating: 4.8, reviews: 4100, length: "11.0 km", description: "威尔士最高峰，经典马蹄形路线。", difficulty: "困难 (Hard)", tags: ["最高峰", "高山湖", "经典"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Pen-y-Pass+Car+Park" },
             { id: 302, name: "范扇峰 (Pen y Fan)", region: "Wales", routeName: "Horseshoe Ridge", location: "Brecon Beacons", coords: [51.8840, -3.4367], heat: 92, rating: 4.7, reviews: 2500, length: "15.0 km", description: "南威尔士最高峰，开阔的山脊线。", difficulty: "困难 (Hard)", tags: ["山脊", "SAS训练地", "开阔"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Storey+Arms+Outdoor+Centre" },
             { id: 303, name: "圣大卫角 (St Davids Head)", region: "Wales", routeName: "Coastal Circular", location: "Pembrokeshire", coords: [51.9000, -5.3100], heat: 86, rating: 4.8, reviews: 850, length: "6.0 km", description: "威尔士最西端的狂野海岸，经常能看到海豹和海豚，春季有美丽的海滨花卉。", difficulty: "中等 (Moderate)", tags: ["海岸", "野生动物", "悬崖"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Whitesands+Bay+Car+Park" },
             { id: 304, name: "特里凡峰 (Tryfan)", region: "Wales", routeName: "North Ridge Scramble", location: "Snowdonia", coords: [53.1150, -4.0230], heat: 91, rating: 4.9, reviews: 1500, length: "6.0 km", description: "英国最知名的尖峰之一，以其锯齿状的轮廓和需要手脚并用的攀爬路线而闻名。", difficulty: "极难 (Expert)", tags: ["攀岩", "挑战", "地标"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Tryfan" },
-
-            // --- LAKE DISTRICT ---
             { id: 401, name: "斯科菲尔峰 (Scafell Pike)", region: "Lake District", routeName: "From Wasdale Head", location: "Cumbria", coords: [54.4542, -3.2116], heat: 96, rating: 4.7, reviews: 3100, length: "9.0 km", description: "英格兰最高峰，碎石坡挑战。", difficulty: "困难 (Hard)", tags: ["最高峰", "碎石坡", "湖区"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Wasdale+Head+Car+Park" },
             { id: 402, name: "海尔维林峰 (Helvellyn)", region: "Lake District", routeName: "Via Striding Edge", location: "Glenridding", coords: [54.5270, -3.0177], heat: 95, rating: 4.9, reviews: 2800, length: "12.5 km", description: "著名的刀刃状山脊 Striding Edge。", difficulty: "极难 (Expert)", tags: ["险峻山脊", "刺激", "经典"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Glenridding+Car+Park" },
             { id: 403, name: "卡特贝尔 (Catbells)", region: "Lake District", routeName: "Lakeland Walk", location: "Keswick", coords: [54.5680, -3.1700], heat: 91, rating: 4.8, reviews: 2200, length: "5.5 km", description: "俯瞰德文特湖的完美短途徒步。", difficulty: "中等 (Moderate)", tags: ["湖景", "家庭", "全景"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Catbells+Car+Park" },
             { id: 404, name: "科尼斯顿老人 (Old Man of Coniston)", region: "Lake District", routeName: "Circular via Goats Water", location: "Coniston", coords: [54.3700, -3.0900], heat: 90, rating: 4.8, reviews: 2600, length: "10.5 km", description: "经典的湖区山峰，沿途经过古老的铜矿遗址和壮观的高山湖泊。", difficulty: "困难 (Hard)", tags: ["工业遗迹", "湖景", "经典"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Coniston+Old+Man" },
             { id: 405, name: "巴特米尔环线 (Buttermere)", region: "Lake District", routeName: "Lake Circuit", location: "Buttermere", coords: [54.5400, -3.2800], heat: 89, rating: 4.9, reviews: 1800, length: "7.5 km", description: "被群山环绕的宁静湖泊，被认为是湖区最美的湖滨步道之一。", difficulty: "容易 (Easy)", tags: ["湖景", "平坦", "绝美"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Buttermere+Lake" },
-
-            // --- PEAK DISTRICT & YORKSHIRE ---
             { id: 501, name: "马姆托尔 (Mam Tor)", region: "Peak District", routeName: "The Great Ridge", location: "Derbyshire", coords: [53.3492, -1.8096], heat: 93, rating: 4.7, reviews: 3500, length: "10.0 km", description: "大山脊行走，景色开阔。", difficulty: "中等 (Moderate)", tags: ["山脊", "日出", "峰区"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Mam+Tor+National+Trust+Car+Park" },
             { id: 502, name: "马勒姆湾 (Malham Cove)", region: "Yorkshire", routeName: "Landscape Trail", location: "Yorkshire Dales", coords: [54.0717, -2.1587], heat: 90, rating: 4.8, reviews: 1900, length: "7.0 km", description: "哈利波特取景地，独特的石灰岩路面。", difficulty: "中等 (Moderate)", tags: ["哈利波特", "石灰岩", "瀑布"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Malham+Cove" },
             { id: 503, name: "金德斯科特 (Kinder Scout)", region: "Peak District", routeName: "Jacob's Ladder", location: "Edale", coords: [53.3800, -1.8800], heat: 92, rating: 4.7, reviews: 3100, length: "14.0 km", description: "峰区最高点，拥有独特的高原泥炭地貌和著名的 Kinder Downfall 瀑布。", difficulty: "困难 (Hard)", tags: ["高原", "瀑布", "历史"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Edale+Car+Park" },
             { id: 504, name: "斯坦尼奇边缘 (Stanage Edge)", region: "Peak District", routeName: "High Neb Loop", location: "Hathersage", coords: [53.3500, -1.6300], heat: 89, rating: 4.8, reviews: 2200, length: "9.0 km", description: "著名的砂岩悬崖，《傲慢与偏见》中伊丽莎白伫立的地方，攀岩者的天堂。", difficulty: "中等 (Moderate)", tags: ["悬崖", "影视取景", "攀岩"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Stanage+Edge" },
             { id: 701, name: "英格尔伯勒 (Ingleborough)", region: "Yorkshire", routeName: "From Clapham", location: "Yorkshire Dales", coords: [54.1660, -2.3980], heat: 88, rating: 4.7, reviews: 1400, length: "16.0 km", description: "约克郡三峰之一，拥有独特的平顶轮廓和巨大的 Gaping Gill 洞穴。", difficulty: "困难 (Hard)", tags: ["三峰", "洞穴", "挑战"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Clapham+Yorkshire" },
-            
-            // --- NORTH EAST ---
             { id: 702, name: "哈德良长城 (Hadrian's Wall)", region: "North East", routeName: "Sycamore Gap (Steel Rigg)", location: "Northumberland", coords: [55.0030, -2.3900], heat: 93, rating: 4.8, reviews: 3600, length: "6.0 km", description: "罗马帝国的边界。虽然那棵著名的树已不在，但这里的峭壁和长城遗迹依然壮观。", difficulty: "中等 (Moderate)", tags: ["历史", "世界遗产", "长城"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Steel+Rigg+Car+Park" },
             { id: 703, name: "班伯勒城堡海岸 (Bamburgh Castle)", region: "North East", routeName: "Castle & Beach Loop", location: "Northumberland", coords: [55.6080, -1.7100], heat: 87, rating: 4.8, reviews: 2000, length: "5.0 km", description: "雄伟的城堡矗立在沙丘之上，拥有英格兰最美的海岸线之一。", difficulty: "容易 (Easy)", tags: ["城堡", "沙滩", "历史"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Bamburgh+Castle" },
-
-            // --- SOUTH WEST ---
             { id: 601, name: "杜德尔门 (Durdle Door)", region: "South West", routeName: "Jurassic Coast", location: "Dorset", coords: [50.6211, -2.2769], heat: 94, rating: 4.7, reviews: 3300, length: "5.0 km", description: "侏罗纪海岸的天然石灰岩拱门。", difficulty: "中等 (Moderate)", tags: ["海岸拱门", "世界遗产", "沙滩"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Durdle+Door+Car+Park" },
             { id: 602, name: "廷塔杰尔 (Tintagel)", region: "South West", routeName: "King Arthur's Coast", location: "Cornwall", coords: [50.6674, -4.7576], heat: 89, rating: 4.7, reviews: 1600, length: "6.0 km", description: "亚瑟王传说之地，悬崖城堡。", difficulty: "中等 (Moderate)", tags: ["亚瑟王", "城堡废墟", "海岸"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Tintagel+Castle" },
             { id: 603, name: "切达峡谷 (Cheddar Gorge)", region: "South West", routeName: "Cliff Top Walk", location: "Somerset", coords: [51.2820, -2.7650], heat: 86, rating: 4.6, reviews: 2100, length: "6.5 km", description: "英国最大的峡谷，甚至有野生山羊。", difficulty: "困难 (Hard)", tags: ["峡谷", "绝景"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Cheddar+Gorge" },
             { id: 604, name: "圣艾夫斯至塞纳 (St Ives to Zennor)", region: "South West", routeName: "South West Coast Path", location: "Cornwall", coords: [50.2100, -5.4800], heat: 90, rating: 4.8, reviews: 1200, length: "10.5 km", description: "极其崎岖但美丽的海岸线，传说中美人鱼出没的地方。通常单程步行，坐巴士返回。", difficulty: "困难 (Hard)", tags: ["海岸", "岩石", "传说"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=St+Ives+Cornwall" },
             { id: 605, name: "岩石谷 (Valley of Rocks)", region: "South West", routeName: "Lynton Loop", location: "Exmoor", coords: [51.2300, -3.8500], heat: 85, rating: 4.8, reviews: 900, length: "5.0 km", description: "位于埃克斯穆尔国家公园边缘的独特干谷，拥有奇异的岩石构造和野生山羊群。", difficulty: "容易/中等", tags: ["地质", "山羊", "海岸"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Valley+of+Rocks" },
-
-            // --- LONDON AREA (Previous) ---
             { id: 1, name: "七姐妹岩 (Seven Sisters)", region: "London Area", routeName: "Seaford to Eastbourne", location: "East Sussex", coords: [50.7600, 0.1600], heat: 98, rating: 4.9, reviews: 2150, length: "21.8 km", description: "经典的白垩悬崖海岸线。", difficulty: "困难 (Hard)", tags: ["海景", "悬崖", "必去"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Seven+Sisters+Cliffs" },
             { id: 2, name: "博克斯山 (Box Hill)", region: "London Area", routeName: "Circular Hike", location: "Surrey", coords: [51.2492, -0.3151], heat: 92, rating: 4.6, reviews: 1596, length: "12.8 km", description: "萨里山地标，著名挑战。", difficulty: "中等 (Moderate)", tags: ["全景", "挑战", "经典"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Box+Hill+Surrey" },
             { id: 3, name: "埃平森林 (Epping Forest)", region: "London Area", routeName: "Oak Trail", location: "Greater London", coords: [51.6715, 0.1014], heat: 85, rating: 4.6, reviews: 557, length: "10.2 km", description: "古老皇家林地，地铁直达。", difficulty: "中等 (Moderate)", tags: ["森林", "古迹", "地铁直达"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Epping+Forest+Oak+Trail" },
@@ -330,6 +291,15 @@
 
                     L.control.zoom({ position: 'bottomright' }).addTo(map);
                     mapInstanceRef.current = map;
+
+                    // Create Canvas element for Fog Layer and append to overlayPane
+                    const canvas = document.createElement('canvas');
+                    canvas.className = 'fog-layer-canvas';
+                    canvas.style.display = 'none'; // Initially hidden
+                    canvasRef.current = canvas;
+                    
+                    const overlayPane = map.getPanes().overlayPane;
+                    overlayPane.appendChild(canvas);
                 }
             }, []);
 
@@ -355,33 +325,52 @@
                 if (!map || !canvas) return;
 
                 if (!fogMode) {
-                    const ctx = canvas.getContext('2d');
-                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    canvas.style.display = 'none';
                     return;
+                } else {
+                    canvas.style.display = 'block';
                 }
 
                 const ctx = canvas.getContext('2d');
+                
                 const size = map.getSize();
                 const dpr = window.devicePixelRatio || 1;
 
+                // Resize logic
                 if (canvas.width !== size.x * dpr || canvas.height !== size.y * dpr) {
                     canvas.width = size.x * dpr;
                     canvas.height = size.y * dpr;
                     ctx.scale(dpr, dpr);
-                    canvas.style.width = `${size.x}px`;
-                    canvas.style.height = `${size.y}px`;
+                    canvas.style.width = size.x + 'px';
+                    canvas.style.height = size.y + 'px';
                 }
+                
+                // Position canvas at current view top-left
+                const bounds = map.getBounds();
+                const topLeft = map.latLngToLayerPoint(bounds.getNorthWest());
+                L.DomUtil.setPosition(canvas, topLeft);
 
+                // Clear
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                // 1. Fill Dark Fog
                 ctx.globalCompositeOperation = 'source-over';
-                ctx.clearRect(0, 0, size.x, size.y);
                 ctx.fillStyle = 'rgba(20, 25, 35, 0.85)'; 
-                ctx.fillRect(0, 0, size.x, size.y);
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+                // 2. Erase Holes
                 ctx.globalCompositeOperation = 'destination-out';
 
                 const drawHole = (lat, lng) => {
-                    const point = map.latLngToContainerPoint([lat, lng]);
-                    ctx.drawImage(gradientCanvas, point.x - 60, point.y - 60);
+                    const point = map.latLngToLayerPoint([lat, lng]);
+                    // Adjust point relative to the canvas top-left
+                    const x = point.x - topLeft.x;
+                    const y = point.y - topLeft.y;
+                    
+                    // Optimization: only draw if within bounds
+                    if (x > -60 && x < canvas.width + 60 && y > -60 && y < canvas.height + 60) {
+                         ctx.drawImage(gradientCanvas, x - 60, y - 60);
+                    }
                 };
 
                 hikingSpots.forEach(spot => {
@@ -393,46 +382,36 @@
                 USER_HISTORY_LOCATIONS.forEach(loc => {
                     drawHole(loc.coords[0], loc.coords[1]);
                 });
-
+                
                 ctx.globalCompositeOperation = 'source-over';
             };
 
+            // Hook up map events
             useEffect(() => {
                 const map = mapInstanceRef.current;
                 if (!map) return;
-
-                let animationFrameId;
-
-                const renderLoop = () => {
-                    drawFog();
+                
+                const refreshFog = () => {
+                    if (fogMode) requestAnimationFrame(drawFog);
                 };
 
-                const onMapUpdate = () => {
-                    if(animationFrameId) cancelAnimationFrame(animationFrameId);
-                    animationFrameId = requestAnimationFrame(renderLoop);
-                };
-
-                if (fogMode) {
-                    map.on('move', onMapUpdate);
-                    map.on('zoom', onMapUpdate);
-                    map.on('resize', onMapUpdate);
-                    renderLoop(); 
-                } else {
-                    const canvas = canvasRef.current;
-                    if (canvas) {
-                        const ctx = canvas.getContext('2d');
-                        ctx.clearRect(0, 0, canvas.width, canvas.height);
-                    }
-                    map.off('move', onMapUpdate);
-                    map.off('zoom', onMapUpdate);
-                    map.off('resize', onMapUpdate);
-                }
+                // IMPORTANT: We only need to redraw on moveend/zoom/resize
+                // During drag, the overlayPane transforms via CSS, so the canvas moves with it natively.
+                map.on('moveend', refreshFog);
+                map.on('zoom', refreshFog); // zoom fires during zoom animation? better zoomend maybe?
+                // Actually, during zoom, overlayPane also scales. 
+                // 'zoom' event might cause flicker if we redraw mid-zoom. 
+                // 'zoomend' is safer.
+                map.on('zoomend', refreshFog);
+                map.on('resize', refreshFog);
+                
+                if(fogMode) refreshFog();
 
                 return () => {
-                    if(animationFrameId) cancelAnimationFrame(animationFrameId);
-                    map.off('move', onMapUpdate);
-                    map.off('zoom', onMapUpdate);
-                    map.off('resize', onMapUpdate);
+                    map.off('moveend', refreshFog);
+                    map.off('zoom', refreshFog);
+                    map.off('zoomend', refreshFog);
+                    map.off('resize', refreshFog);
                 };
             }, [fogMode, visitedSpots, hikingSpots, gradientCanvas]);
 
@@ -704,9 +683,6 @@
                             <span className="hidden md:inline">{fogMode ? "Fog Mode On" : "Fog Mode Off"}</span>
                         </button>
                     </div>
-
-                    {/* FOG CANVAS OVERLAY */}
-                    <canvas id="fog-canvas" ref={canvasRef}></canvas>
 
                     <div ref={mapRef} id="map" className="h-full w-full bg-gray-100"></div>
                 </div>
