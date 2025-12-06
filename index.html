@@ -23,6 +23,9 @@
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
 
+    <!-- Markdown Parser for AI responses -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
         
@@ -35,7 +38,8 @@
         .leaflet-bar a { background-color: white !important; color: #111827 !important; border-bottom: 1px solid #f3f4f6 !important; }
         .leaflet-bar a:hover { background-color: #f9fafb !important; }
         
-        .custom-scrollbar::-webkit-scrollbar { width: 0px; background: transparent; } 
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; background: transparent; } 
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 10px; }
         
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
@@ -52,6 +56,19 @@
         
         .star-filled { color: #fbbf24; }
         .star-empty { color: #d1d5db; }
+
+        /* Fog Canvas Layer */
+        .fog-layer-canvas {
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        /* AI Markdown Styles */
+        .ai-content h3 { font-weight: 700; margin-top: 1em; margin-bottom: 0.5em; color: #111827; }
+        .ai-content ul { list-style-type: disc; padding-left: 1.2em; margin-bottom: 1em; }
+        .ai-content li { margin-bottom: 0.25em; }
+        .ai-content p { margin-bottom: 0.8em; line-height: 1.6; }
+        .ai-content strong { color: #059669; font-weight: 600; }
     </style>
 </head>
 <body class="h-screen w-screen overflow-hidden relative">
@@ -65,6 +82,9 @@
 
     <script type="text/babel">
         const { useState, useEffect, useRef, useMemo } = React;
+        
+        // GEMINI API CONFIG
+        const apiKey = ""; // Key provided by environment
 
         // --- USER HISTORY DATA ---
         const USER_HISTORY_LOCATIONS = [
@@ -140,9 +160,12 @@
             { name: "Hassocks", coords: [50.923, -0.142] }
         ];
 
+        // Raw Text List
         const USER_RAW_LIST = `Eastwell Manor, Champneys Hotel & Spa, Margate, Dulwich Park, Crystal Palace Park, Croydon, National Trust - Headley Heath, Oak Trail Trailhead, Theydon Bois Golf Club, Drumsheds, Vue Cinema London - North Finchley, River Chess, Stocker's Lake Nature Reserve, Alexandra Park, Royal Air Force Museum London, Richmond, Tenpin Acton, Hastings Country Park, Wanstead Flats, Walthamstow Wetlands, London Wildlife Trust, Hurst Park, Otford Kent Circular Walk, Glynde, Brighton, Dover, Rydal Cave, Keswick, Dunseverick Castle, Giant's Causeway, The Dark Hedges, Belfast, Edinburgh, Waterhead, Bowness-on-Windermere, Windermere, York, Nevis Range Gondola Top, Inverness, Urquhart Castle, Pitlochry, Portree, The Brother’s Point, Kyle of Lochalsh, Dornie, Willen Lake, Cambridge, Preston Campsite, Birling Gap, Fairlop Waters Country Park, Hadleigh Castle, Oxford, Gomshall, The Farmer’s Dog, Stow-on-the-Wold, Bourton-on-the-Water, Bicester, Diddly Squat Farm Shop, Chippenham, New Forest National Park, Chesham, Dorking, Betws-y-Coed, Dolgarrog, Conwy Castle, Llandudno, Chester, Windsor Castle, Hampton Court Palace, Royal Botanic Gardens, Kew, WWT London Wetland Centre, Richmond Park, Reading, Box Hill, Epping Forest, Wanstead Park, Herne Bay, Eynsford, Knole Park, Chatham, Snowdon, Hungerford, Cotswolds, River Coln, Godalming, Guildford, Sandhurst, Birmingham, Pen y Fan, Bath, Durdle Door, Portsmouth, Weybridge, Ivinghoe, Southend-on-Sea, Canterbury, Folkestone, Ardingly, Balcombe, Seaford, Hastings, Newhaven, Lewes, Hassocks`;
 
+        // --- EXISTING HIKING SPOTS ---
         const initialHikingSpots = [
+            // --- SCOTLAND ---
             { id: 201, name: "本尼维斯山 (Ben Nevis)", region: "Scotland", routeName: "Mountain Track", location: "Fort William", coords: [56.7969, -5.0036], heat: 99, rating: 4.8, reviews: 4500, length: "17.0 km", description: "英国最高峰，苏格兰高地的象征。", difficulty: "困难 (Hard)", tags: ["最高峰", "挑战", "必去"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Ben+Nevis+Visitor+Centre" },
             { id: 202, name: "斯托尔老人石 (Old Man of Storr)", region: "Scotland", routeName: "The Storr Circular", location: "Isle of Skye", coords: [57.5073, -6.1746], heat: 97, rating: 4.7, reviews: 3800, length: "4.5 km", description: "斯凯岛的奇特岩石景观，如同外星表面。", difficulty: "中等 (Moderate)", tags: ["奇石", "斯凯岛", "摄影"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Old+Man+of+Storr+Car+Park" },
             { id: 203, name: "仙女池 (Fairy Pools)", region: "Scotland", routeName: "Coire na Creiche Loop", location: "Isle of Skye", coords: [57.2504, -6.2737], heat: 96, rating: 4.6, reviews: 3200, length: "3.2 km", description: "库林山脉下的蓝色水潭和瀑布。", difficulty: "容易 (Easy)", tags: ["瀑布", "野泳", "网红"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Fairy+Pools+Car+Park" },
@@ -150,15 +173,21 @@
             { id: 205, name: "奎雷英山口 (The Quiraing)", region: "Scotland", routeName: "Quiraing Circuit", location: "Isle of Skye", coords: [57.6282, -6.2907], heat: 95, rating: 4.9, reviews: 2900, length: "6.8 km", description: "壮观的滑坡地貌，悬崖与尖塔。", difficulty: "困难 (Hard)", tags: ["地质奇观", "绝景", "环线"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=The+Quiraing+Car+Park" },
             { id: 206, name: "迷失山谷 (Lost Valley)", region: "Scotland", routeName: "Coire Gabhail", location: "Glencoe", coords: [56.6678, -4.9867], heat: 92, rating: 4.8, reviews: 1200, length: "4.0 km", description: "麦克唐纳家族曾经藏匿牛群的隐秘山谷，被壮丽的三姐妹山环绕。", difficulty: "困难 (Hard)", tags: ["峡谷", "历史", "绝景"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Lost+Valley+Glencoe" },
             { id: 207, name: "科尼克山 (Conic Hill)", region: "Scotland", routeName: "Balmaha Circular", location: "Loch Lomond", coords: [56.0860, -4.5230], heat: 88, rating: 4.7, reviews: 2100, length: "4.0 km", description: "洛蒙德湖的最佳观景点，正处于高地与低地的地质分界线上。", difficulty: "中等 (Moderate)", tags: ["湖景", "地质", "短途"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Conic+Hill+Balmaha" },
+
+            // --- WALES ---
             { id: 301, name: "斯诺登峰 (Snowdon)", region: "Wales", routeName: "Pyg & Miners' Track", location: "Snowdonia", coords: [53.0685, -4.0763], heat: 98, rating: 4.8, reviews: 4100, length: "11.0 km", description: "威尔士最高峰，经典马蹄形路线。", difficulty: "困难 (Hard)", tags: ["最高峰", "高山湖", "经典"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Pen-y-Pass+Car+Park" },
             { id: 302, name: "范扇峰 (Pen y Fan)", region: "Wales", routeName: "Horseshoe Ridge", location: "Brecon Beacons", coords: [51.8840, -3.4367], heat: 92, rating: 4.7, reviews: 2500, length: "15.0 km", description: "南威尔士最高峰，开阔的山脊线。", difficulty: "困难 (Hard)", tags: ["山脊", "SAS训练地", "开阔"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Storey+Arms+Outdoor+Centre" },
             { id: 303, name: "圣大卫角 (St Davids Head)", region: "Wales", routeName: "Coastal Circular", location: "Pembrokeshire", coords: [51.9000, -5.3100], heat: 86, rating: 4.8, reviews: 850, length: "6.0 km", description: "威尔士最西端的狂野海岸，经常能看到海豹和海豚，春季有美丽的海滨花卉。", difficulty: "中等 (Moderate)", tags: ["海岸", "野生动物", "悬崖"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Whitesands+Bay+Car+Park" },
             { id: 304, name: "特里凡峰 (Tryfan)", region: "Wales", routeName: "North Ridge Scramble", location: "Snowdonia", coords: [53.1150, -4.0230], heat: 91, rating: 4.9, reviews: 1500, length: "6.0 km", description: "英国最知名的尖峰之一，以其锯齿状的轮廓和需要手脚并用的攀爬路线而闻名。", difficulty: "极难 (Expert)", tags: ["攀岩", "挑战", "地标"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Tryfan" },
+
+            // --- LAKE DISTRICT ---
             { id: 401, name: "斯科菲尔峰 (Scafell Pike)", region: "Lake District", routeName: "From Wasdale Head", location: "Cumbria", coords: [54.4542, -3.2116], heat: 96, rating: 4.7, reviews: 3100, length: "9.0 km", description: "英格兰最高峰，碎石坡挑战。", difficulty: "困难 (Hard)", tags: ["最高峰", "碎石坡", "湖区"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Wasdale+Head+Car+Park" },
             { id: 402, name: "海尔维林峰 (Helvellyn)", region: "Lake District", routeName: "Via Striding Edge", location: "Glenridding", coords: [54.5270, -3.0177], heat: 95, rating: 4.9, reviews: 2800, length: "12.5 km", description: "著名的刀刃状山脊 Striding Edge。", difficulty: "极难 (Expert)", tags: ["险峻山脊", "刺激", "经典"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Glenridding+Car+Park" },
             { id: 403, name: "卡特贝尔 (Catbells)", region: "Lake District", routeName: "Lakeland Walk", location: "Keswick", coords: [54.5680, -3.1700], heat: 91, rating: 4.8, reviews: 2200, length: "5.5 km", description: "俯瞰德文特湖的完美短途徒步。", difficulty: "中等 (Moderate)", tags: ["湖景", "家庭", "全景"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Catbells+Car+Park" },
             { id: 404, name: "科尼斯顿老人 (Old Man of Coniston)", region: "Lake District", routeName: "Circular via Goats Water", location: "Coniston", coords: [54.3700, -3.0900], heat: 90, rating: 4.8, reviews: 2600, length: "10.5 km", description: "经典的湖区山峰，沿途经过古老的铜矿遗址和壮观的高山湖泊。", difficulty: "困难 (Hard)", tags: ["工业遗迹", "湖景", "经典"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Coniston+Old+Man" },
             { id: 405, name: "巴特米尔环线 (Buttermere)", region: "Lake District", routeName: "Lake Circuit", location: "Buttermere", coords: [54.5400, -3.2800], heat: 89, rating: 4.9, reviews: 1800, length: "7.5 km", description: "被群山环绕的宁静湖泊，被认为是湖区最美的湖滨步道之一。", difficulty: "容易 (Easy)", tags: ["湖景", "平坦", "绝美"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Buttermere+Lake" },
+
+            // --- PEAK DISTRICT & YORKSHIRE ---
             { id: 501, name: "马姆托尔 (Mam Tor)", region: "Peak District", routeName: "The Great Ridge", location: "Derbyshire", coords: [53.3492, -1.8096], heat: 93, rating: 4.7, reviews: 3500, length: "10.0 km", description: "大山脊行走，景色开阔。", difficulty: "中等 (Moderate)", tags: ["山脊", "日出", "峰区"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Mam+Tor+National+Trust+Car+Park" },
             { id: 502, name: "马勒姆湾 (Malham Cove)", region: "Yorkshire", routeName: "Landscape Trail", location: "Yorkshire Dales", coords: [54.0717, -2.1587], heat: 90, rating: 4.8, reviews: 1900, length: "7.0 km", description: "哈利波特取景地，独特的石灰岩路面。", difficulty: "中等 (Moderate)", tags: ["哈利波特", "石灰岩", "瀑布"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Malham+Cove" },
             { id: 503, name: "金德斯科特 (Kinder Scout)", region: "Peak District", routeName: "Jacob's Ladder", location: "Edale", coords: [53.3800, -1.8800], heat: 92, rating: 4.7, reviews: 3100, length: "14.0 km", description: "峰区最高点，拥有独特的高原泥炭地貌和著名的 Kinder Downfall 瀑布。", difficulty: "困难 (Hard)", tags: ["高原", "瀑布", "历史"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Edale+Car+Park" },
@@ -234,6 +263,61 @@
             }
             return <div className="flex gap-0.5">{stars}</div>;
         };
+        
+        // --- AI MODAL COMPONENT ---
+        const AiModal = ({ isOpen, onClose, onSearch }) => {
+            const [prompt, setPrompt] = useState("");
+            const [isLoading, setIsLoading] = useState(false);
+
+            if (!isOpen) return null;
+
+            const handleSubmit = async () => {
+                if (!prompt.trim()) return;
+                setIsLoading(true);
+                await onSearch(prompt);
+                setIsLoading(false);
+                // We don't close automatically, let user see results or close manually
+            };
+
+            return (
+                <div className="absolute inset-0 z-[2000] bg-black/30 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+                    <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden transform transition-all scale-100">
+                        <div className="p-6 bg-gradient-to-r from-blue-600 to-indigo-600 text-white relative">
+                            <button onClick={onClose} className="absolute top-4 right-4 text-white/80 hover:text-white">
+                                <Icon name="x" size={20} />
+                            </button>
+                            <h3 className="text-xl font-bold flex items-center gap-2">
+                                <Icon name="sparkles" size={20} /> AI 智能选路
+                            </h3>
+                            <p className="text-blue-100 text-sm mt-1">输入您的偏好，AI 为您推荐最佳路线</p>
+                        </div>
+                        
+                        <div className="p-6">
+                            <textarea
+                                value={prompt}
+                                onChange={(e) => setPrompt(e.target.value)}
+                                placeholder="例如：我想找一个适合带孩子、有瀑布且难度适中的徒步路线..."
+                                className="w-full h-32 p-4 bg-gray-50 border border-gray-200 rounded-xl text-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none text-sm"
+                            />
+                            
+                            <div className="mt-4 flex justify-end">
+                                <button 
+                                    onClick={handleSubmit}
+                                    disabled={isLoading || !prompt.trim()}
+                                    className={`px-6 py-2.5 rounded-full font-bold text-sm text-white flex items-center gap-2 transition-all ${isLoading ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 shadow-lg hover:shadow-blue-500/30'}`}
+                                >
+                                    {isLoading ? (
+                                        <><Icon name="loader-2" className="animate-spin" size={16} /> 思考中...</>
+                                    ) : (
+                                        <><Icon name="search" size={16} /> 开始推荐</>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
 
         const App = () => {
             const mapRef = useRef(null);
@@ -243,33 +327,34 @@
             
             const [hikingSpots, setHikingSpots] = useState(initialHikingSpots);
             const [selectedSpot, setSelectedSpot] = useState(null);
-            const [fogMode, setFogMode] = useState(false); // Default to Fog Mode OFF
+            const [fogMode, setFogMode] = useState(false); 
             const [sidebarOpen, setSidebarOpen] = useState(true);
             const [sortBy, setSortBy] = useState('heat');
             const [regionFilter, setRegionFilter] = useState("All");
             const regions = ["All", "London Area", "Scotland", "Wales", "Lake District", "Peak District", "South West", "Cotswolds", "Yorkshire", "East England", "North East"];
 
+            // AI States
+            const [showAiModal, setShowAiModal] = useState(false);
+            const [aiFilteredIds, setAiFilteredIds] = useState(null); // null means no filter
+            const [aiPlannerContent, setAiPlannerContent] = useState("");
+            const [isAiPlanning, setIsAiPlanning] = useState(false);
+
             // Visited Spots logic
             const [visitedSpots, setVisitedSpots] = useState(new Set());
 
-            // --- INITIALIZATION LOGIC (Auto-match User History) ---
+            // --- INITIALIZATION & PERSISTENCE (Same as before) ---
             useEffect(() => {
                 const visitedSet = new Set();
-                
-                // 1. Process Hiking Spots Match
                 initialHikingSpots.forEach(spot => {
                     const isMatch = USER_RAW_LIST.toLowerCase().includes(spot.name.split(' (')[0].toLowerCase()) || 
                                     USER_RAW_LIST.toLowerCase().includes(spot.location.toLowerCase());
                     if (isMatch) visitedSet.add(spot.id);
                 });
-
-                // Load from local storage to merge with hardcoded list
                 const savedVisited = localStorage.getItem('uk_hikes_visited');
                 if (savedVisited) {
                     const savedIds = JSON.parse(savedVisited);
                     savedIds.forEach(id => visitedSet.add(id));
                 }
-
                 setVisitedSpots(visitedSet);
             }, []);
 
@@ -277,44 +362,111 @@
                 localStorage.setItem('uk_hikes_visited', JSON.stringify([...visitedSpots]));
             }, [visitedSpots]);
 
-            // Map Init
+            // --- GEMINI API INTEGRATION ---
+            
+            // 1. AI Smart Filter
+            const handleAiSearch = async (userPrompt) => {
+                const simplifiedData = initialHikingSpots.map(s => ({
+                    id: s.id,
+                    name: s.name,
+                    desc: s.description,
+                    tags: s.tags.join(", "),
+                    region: s.region,
+                    difficulty: s.difficulty
+                }));
+
+                const systemPrompt = `You are an expert hiking guide AI. User will describe their ideal hike.
+You have a database of hiking spots: ${JSON.stringify(simplifiedData)}.
+Based on the user's request, select the best matching IDs (max 5).
+Return ONLY a JSON array of IDs, e.g., [101, 205]. Do not explain.`;
+
+                try {
+                    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contents: [{
+                                parts: [{ text: systemPrompt + "\nUser request: " + userPrompt }]
+                            }]
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                    
+                    // Parse JSON from markdown block if present
+                    const jsonMatch = text.match(/\[.*\]/s);
+                    if (jsonMatch) {
+                        const ids = JSON.parse(jsonMatch[0]);
+                        setAiFilteredIds(ids);
+                        setShowAiModal(false);
+                        setRegionFilter("All"); // Reset region filter to show AI results globally
+                    } else {
+                        alert("AI 未能找到匹配的地点，请尝试更具体的描述。");
+                    }
+                } catch (e) {
+                    console.error(e);
+                    alert("AI 服务暂时不可用。");
+                }
+            };
+
+            // 2. AI Day Planner
+            const handleAiPlan = async (spot) => {
+                setIsAiPlanning(true);
+                setAiPlannerContent(""); // Clear previous
+                
+                const systemPrompt = `You are an expert UK hiking guide. Create a concise 1-day itinerary for hiking "${spot.name}" in ${spot.location}.
+Structure:
+1. **交通建议** (Transport from major city)
+2. **上午** (Morning activity/hike start)
+3. **午餐推荐** (Lunch/Pub name)
+4. **下午** (Afternoon highlights/finish)
+5. **装备提示** (Gear tips)
+Keep it practical, friendly, and use emojis. Language: Chinese. Use Markdown formatting.`;
+
+                try {
+                    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contents: [{ parts: [{ text: systemPrompt }] }]
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                    setAiPlannerContent(text);
+                } catch (e) {
+                    setAiPlannerContent("生成攻略失败，请稍后重试。");
+                } finally {
+                    setIsAiPlanning(false);
+                }
+            };
+
+            // --- MAP INIT (Same as before) ---
             useEffect(() => {
                 if (!mapInstanceRef.current) {
                     const map = L.map(mapRef.current, { zoomControl: false }).setView([54.5, -2], 6); 
-
-                    // Restore to Voyager (Light, nice detail)
-                    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-                        attribution: '&copy; OpenStreetMap &copy; CARTO',
-                        subdomains: 'abcd',
-                        maxZoom: 19
-                    }).addTo(map);
-
+                    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { attribution: '&copy; OpenStreetMap &copy; CARTO', subdomains: 'abcd', maxZoom: 19 }).addTo(map);
                     L.control.zoom({ position: 'bottomright' }).addTo(map);
                     mapInstanceRef.current = map;
-
-                    // Create Canvas element for Fog Layer and append to overlayPane
                     const canvas = document.createElement('canvas');
                     canvas.className = 'fog-layer-canvas';
-                    canvas.style.display = 'none'; // Initially hidden
+                    canvas.style.display = 'none';
                     canvasRef.current = canvas;
-                    
-                    const overlayPane = map.getPanes().overlayPane;
-                    overlayPane.appendChild(canvas);
+                    map.getPanes().overlayPane.appendChild(canvas);
                 }
             }, []);
 
-            // --- FOG LAYER (CANVAS IMPLEMENTATION) ---
+            // --- FOG LAYER LOGIC (Same as optimized version) ---
             const gradientCanvas = useMemo(() => {
                 const c = document.createElement('canvas');
-                c.width = 120; // 2 * radius (60)
-                c.height = 120;
+                c.width = 120; c.height = 120;
                 const ctx = c.getContext('2d');
                 if(ctx) {
                     const grd = ctx.createRadialGradient(60, 60, 12, 60, 60, 60);
-                    grd.addColorStop(0, 'rgba(0,0,0,1)'); // Core clear
-                    grd.addColorStop(1, 'rgba(0,0,0,0)'); // Edge fade
-                    ctx.fillStyle = grd;
-                    ctx.fillRect(0,0,120,120);
+                    grd.addColorStop(0, 'rgba(0,0,0,1)'); grd.addColorStop(1, 'rgba(0,0,0,0)');
+                    ctx.fillStyle = grd; ctx.fillRect(0,0,120,120);
                 }
                 return c;
             }, []);
@@ -323,100 +475,61 @@
                 const map = mapInstanceRef.current;
                 const canvas = canvasRef.current;
                 if (!map || !canvas) return;
-
-                if (!fogMode) {
-                    canvas.style.display = 'none';
-                    return;
-                } else {
-                    canvas.style.display = 'block';
-                }
-
+                if (!fogMode) { canvas.style.display = 'none'; return; } else { canvas.style.display = 'block'; }
                 const ctx = canvas.getContext('2d');
-                
                 const size = map.getSize();
                 const dpr = window.devicePixelRatio || 1;
-
-                // Resize logic
                 if (canvas.width !== size.x * dpr || canvas.height !== size.y * dpr) {
-                    canvas.width = size.x * dpr;
-                    canvas.height = size.y * dpr;
-                    ctx.scale(dpr, dpr);
-                    canvas.style.width = size.x + 'px';
-                    canvas.style.height = size.y + 'px';
+                    canvas.width = size.x * dpr; canvas.height = size.y * dpr;
+                    ctx.scale(dpr, dpr); canvas.style.width = size.x + 'px'; canvas.style.height = size.y + 'px';
                 }
-                
-                // Position canvas at current view top-left
                 const bounds = map.getBounds();
                 const topLeft = map.latLngToLayerPoint(bounds.getNorthWest());
                 L.DomUtil.setPosition(canvas, topLeft);
-
-                // Clear
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-                // 1. Fill Dark Fog
                 ctx.globalCompositeOperation = 'source-over';
                 ctx.fillStyle = 'rgba(20, 25, 35, 0.85)'; 
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-                // 2. Erase Holes
                 ctx.globalCompositeOperation = 'destination-out';
-
                 const drawHole = (lat, lng) => {
                     const point = map.latLngToLayerPoint([lat, lng]);
-                    // Adjust point relative to the canvas top-left
-                    const x = point.x - topLeft.x;
-                    const y = point.y - topLeft.y;
-                    
-                    // Optimization: only draw if within bounds
-                    if (x > -60 && x < canvas.width + 60 && y > -60 && y < canvas.height + 60) {
-                         ctx.drawImage(gradientCanvas, x - 60, y - 60);
-                    }
+                    const x = point.x - topLeft.x; const y = point.y - topLeft.y;
+                    if (x > -60 && x < canvas.width + 60 && y > -60 && y < canvas.height + 60) { ctx.drawImage(gradientCanvas, x - 60, y - 60); }
                 };
-
-                hikingSpots.forEach(spot => {
-                    if (visitedSpots.has(spot.id)) {
-                        drawHole(spot.coords[0], spot.coords[1]);
-                    }
-                });
-
-                USER_HISTORY_LOCATIONS.forEach(loc => {
-                    drawHole(loc.coords[0], loc.coords[1]);
-                });
-                
+                hikingSpots.forEach(spot => { if (visitedSpots.has(spot.id)) drawHole(spot.coords[0], spot.coords[1]); });
+                USER_HISTORY_LOCATIONS.forEach(loc => { drawHole(loc.coords[0], loc.coords[1]); });
                 ctx.globalCompositeOperation = 'source-over';
             };
 
-            // Hook up map events
             useEffect(() => {
                 const map = mapInstanceRef.current;
                 if (!map) return;
-                
-                const refreshFog = () => {
-                    if (fogMode) requestAnimationFrame(drawFog);
-                };
-
-                // IMPORTANT: We only need to redraw on moveend/zoom/resize
-                // During drag, the overlayPane transforms via CSS, so the canvas moves with it natively.
-                map.on('moveend', refreshFog);
-                map.on('zoom', refreshFog); // zoom fires during zoom animation? better zoomend maybe?
-                // Actually, during zoom, overlayPane also scales. 
-                // 'zoom' event might cause flicker if we redraw mid-zoom. 
-                // 'zoomend' is safer.
-                map.on('zoomend', refreshFog);
-                map.on('resize', refreshFog);
-                
-                if(fogMode) refreshFog();
-
-                return () => {
-                    map.off('moveend', refreshFog);
-                    map.off('zoom', refreshFog);
-                    map.off('zoomend', refreshFog);
-                    map.off('resize', refreshFog);
-                };
+                const refreshFog = () => { requestAnimationFrame(drawFog); };
+                refreshFog();
+                if (fogMode) { map.on('moveend', refreshFog); map.on('zoomend', refreshFog); map.on('resize', refreshFog); }
+                return () => { map.off('moveend', refreshFog); map.off('zoomend', refreshFog); map.off('resize', refreshFog); };
             }, [fogMode, visitedSpots, hikingSpots, gradientCanvas]);
 
+            // --- MARKERS LOGIC & FILTERING ---
+            const visibleSpots = useMemo(() => {
+                let spots = hikingSpots;
+                
+                // Apply AI Filter if exists
+                if (aiFilteredIds) {
+                    spots = spots.filter(s => aiFilteredIds.includes(s.id));
+                } 
+                // Otherwise apply Region Filter
+                else if (regionFilter !== "All") {
+                    spots = spots.filter(s => s.region === regionFilter);
+                }
+                
+                return spots.sort((a, b) => {
+                    if (sortBy === 'heat') return b.heat - a.heat;
+                    if (sortBy === 'rating') return b.rating - a.rating;
+                    return 0;
+                });
+            }, [hikingSpots, regionFilter, sortBy, aiFilteredIds]);
 
-            // --- MARKERS LOGIC ---
             useEffect(() => {
                 const map = mapInstanceRef.current;
                 if (!map) return;
@@ -426,231 +539,145 @@
 
                 // User History Markers
                 USER_HISTORY_LOCATIONS.forEach(loc => {
-                    const customIcon = L.divIcon({
-                        className: 'custom-div-icon',
-                        html: `<div style="background-color: #9ca3af; width: 8px; height: 8px; border-radius: 50%; border: 1px solid white; box-shadow: 0 1px 2px rgba(0,0,0,0.2);"></div>`,
-                        iconSize: [8, 8],
-                        iconAnchor: [4, 4]
-                    });
-
-                    const marker = L.marker(loc.coords, { 
-                        icon: customIcon, 
-                        zIndexOffset: 100,
-                    }).addTo(map);
-                    
-                    marker.bindTooltip(loc.name, {
-                        direction: 'top',
-                        offset: [0, -5],
-                        className: 'bg-white px-2 py-1 rounded-lg shadow-sm text-xs text-gray-600 font-medium border border-gray-100'
-                    });
-
+                    const customIcon = L.divIcon({ className: 'custom-div-icon', html: `<div style="background-color: #9ca3af; width: 8px; height: 8px; border-radius: 50%; border: 1px solid white; box-shadow: 0 1px 2px rgba(0,0,0,0.2);"></div>`, iconSize: [8, 8], iconAnchor: [4, 4] });
+                    const marker = L.marker(loc.coords, { icon: customIcon, zIndexOffset: 100 }).addTo(map);
+                    marker.bindTooltip(loc.name, { direction: 'top', offset: [0, -5], className: 'bg-white px-2 py-1 rounded-lg shadow-sm text-xs text-gray-600 font-medium border border-gray-100' });
                     markersRef.current.push(marker);
                 });
 
                 // Hiking Spots
-                const filteredSpots = regionFilter === "All" 
-                    ? hikingSpots 
-                    : hikingSpots.filter(s => s.region === regionFilter);
-
-                filteredSpots.forEach(spot => {
+                visibleSpots.forEach(spot => {
                     const isVisited = visitedSpots.has(spot.id);
-
                     let markerColor = isVisited ? '#10b981' : '#3b82f6';
-                    let markerOpacity = 1; 
-                    
-                    const customIcon = L.divIcon({
-                        className: 'custom-div-icon',
-                        html: `<div style="background-color: ${markerColor}; width: 14px; height: 14px; border-radius: 50%; border: 3px solid white; box-shadow: 0 4px 6px rgba(0,0,0,0.15);"></div>`,
-                        iconSize: [14, 14],
-                        iconAnchor: [7, 7]
-                    });
-
-                    const marker = L.marker(spot.coords, { icon: customIcon, opacity: markerOpacity, zIndexOffset: isVisited ? 1000 : 2000 }).addTo(map);
-                    
-                    marker.on('click', () => {
-                        setSelectedSpot(spot);
-                        setSidebarOpen(true);
-                         map.flyTo(spot.coords, 11, { duration: 1.5 });
-                    });
-
-                    marker.bindTooltip(`<b class="font-sans text-sm">${spot.name}</b>`, {
-                        permanent: false,
-                        direction: 'top',
-                        offset: [0, -10],
-                        className: 'bg-white px-3 py-1.5 rounded-xl shadow-lg text-gray-800 font-medium border border-gray-100 transform translate-y-1'
-                    });
-
+                    const customIcon = L.divIcon({ className: 'custom-div-icon', html: `<div style="background-color: ${markerColor}; width: 14px; height: 14px; border-radius: 50%; border: 3px solid white; box-shadow: 0 4px 6px rgba(0,0,0,0.15);"></div>`, iconSize: [14, 14], iconAnchor: [7, 7] });
+                    const marker = L.marker(spot.coords, { icon: customIcon, zIndexOffset: isVisited ? 1000 : 2000 }).addTo(map);
+                    marker.on('click', () => { setSelectedSpot(spot); setSidebarOpen(true); setAiPlannerContent(""); map.flyTo(spot.coords, 11, { duration: 1.5 }); });
+                    marker.bindTooltip(`<b class="font-sans text-sm">${spot.name}</b>`, { permanent: false, direction: 'top', offset: [0, -10], className: 'bg-white px-3 py-1.5 rounded-xl shadow-lg text-gray-800 font-medium border border-gray-100 transform translate-y-1' });
                     markersRef.current.push(marker);
                 });
-
-            }, [fogMode, hikingSpots, visitedSpots, regionFilter]);
+            }, [fogMode, visibleSpots, visitedSpots]); // Depend on visibleSpots now
 
             const handleCardClick = (spot) => {
                 setSelectedSpot(spot);
-                if (mapInstanceRef.current) {
-                    mapInstanceRef.current.flyTo(spot.coords, 12, { duration: 1.5 });
-                }
+                setAiPlannerContent(""); // Reset plan
+                if (mapInstanceRef.current) mapInstanceRef.current.flyTo(spot.coords, 12, { duration: 1.5 });
             };
 
-            const toggleVisited = (e, id) => {
-                e.stopPropagation();
-                const newVisited = new Set(visitedSpots);
-                if (newVisited.has(id)) newVisited.delete(id);
-                else newVisited.add(id);
-                setVisitedSpots(newVisited);
-            };
-
-            const sortedSpots = useMemo(() => {
-                let spots = regionFilter === "All" ? hikingSpots : hikingSpots.filter(s => s.region === regionFilter);
-                return [...spots].sort((a, b) => {
-                    if (sortBy === 'heat') return b.heat - a.heat;
-                    if (sortBy === 'rating') return b.rating - a.rating;
-                    return 0;
-                });
-            }, [sortBy, hikingSpots, regionFilter]);
+            const toggleVisited = (e, id) => { e.stopPropagation(); const newVisited = new Set(visitedSpots); if (newVisited.has(id)) newVisited.delete(id); else newVisited.add(id); setVisitedSpots(newVisited); };
 
             return (
                 <div className="flex h-full w-full relative overflow-hidden bg-gray-200">
                     
-                    {/* Floating Sidebar / Card */}
+                    <AiModal isOpen={showAiModal} onClose={() => setShowAiModal(false)} onSearch={handleAiSearch} />
+
+                    {/* Sidebar */}
                     <div className={`absolute z-[1000] top-4 bottom-4 left-4 w-full max-w-md bg-white shadow-2xl rounded-3xl flex flex-col transition-transform duration-500 ease-in-out transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-[110%]'}`}>
                         
-                        {/* Header - Minimalist White */}
+                        {/* Header */}
                         <div className={`bg-white rounded-t-3xl z-10 transition-all duration-300 ${selectedSpot ? 'h-0 overflow-hidden opacity-0' : 'p-6 pb-2 h-auto opacity-100'}`}>
                             {!selectedSpot && (
                                 <>
                                     <div className="flex justify-between items-start mb-2">
                                         <div>
-                                            <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight leading-none">
-                                                Where to?
-                                            </h1>
+                                            <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight leading-none">Where to?</h1>
                                             <p className="text-gray-500 text-sm font-medium mt-1">UK Hiking Guide</p>
                                         </div>
                                         <button onClick={() => setSidebarOpen(false)} className="md:hidden p-2 bg-gray-100 hover:bg-gray-200 rounded-full transition-colors"><Icon name="x" size={20} className="text-gray-600" /></button>
                                     </div>
 
-                                    {/* Search/Filter Container */}
-                                    <div className="mt-4">
+                                    {/* AI Smart Scout Button */}
+                                    <button 
+                                        onClick={() => setShowAiModal(true)}
+                                        className="w-full mt-2 mb-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-3 rounded-2xl font-bold shadow-lg shadow-blue-200 flex items-center justify-center gap-2 transition-all transform hover:scale-[1.02]"
+                                    >
+                                        <Icon name="sparkles" size={18} /> ✨ AI 智能选路
+                                    </button>
+
+                                    <div className="mt-1">
                                         <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
-                                            {regions.map(region => (
-                                                <button 
-                                                    key={region}
-                                                    onClick={() => setRegionFilter(region)}
-                                                    className={`whitespace-nowrap px-4 py-2 rounded-full text-sm font-semibold transition-all duration-200 ${regionFilter === region ? 'bg-black text-white shadow-lg' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
-                                                >
-                                                    {region}
-                                                </button>
+                                            <button onClick={() => {setRegionFilter("All"); setAiFilteredIds(null);}} className={`whitespace-nowrap px-4 py-2 rounded-full text-sm font-semibold transition-all ${!aiFilteredIds && regionFilter === "All" ? 'bg-black text-white shadow-lg' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>全部</button>
+                                            {regions.filter(r => r !== "All").map(region => (
+                                                <button key={region} onClick={() => {setRegionFilter(region); setAiFilteredIds(null);}} className={`whitespace-nowrap px-4 py-2 rounded-full text-sm font-semibold transition-all ${!aiFilteredIds && regionFilter === region ? 'bg-black text-white shadow-lg' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>{region}</button>
                                             ))}
                                         </div>
                                     </div>
-
-                                    {/* Sort Pills */}
-                                    <div className="flex gap-2 mt-2 pb-2 border-b border-gray-100">
-                                        <span className="text-xs font-bold text-gray-400 uppercase self-center mr-2">Sort by</span>
-                                        <button onClick={() => setSortBy('heat')} className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${sortBy === 'heat' ? 'bg-blue-50 text-blue-700' : 'text-gray-400 hover:bg-gray-50'}`}>Heat</button>
-                                        <button onClick={() => setSortBy('rating')} className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${sortBy === 'rating' ? 'bg-yellow-50 text-yellow-700' : 'text-gray-400 hover:bg-gray-50'}`}>Rating</button>
-                                    </div>
+                                    {aiFilteredIds && (
+                                        <div className="flex items-center gap-2 mt-2 bg-blue-50 p-2 rounded-lg text-blue-700 text-xs font-bold">
+                                            <Icon name="filter" size={12}/> 已应用 AI 筛选结果 <button onClick={() => setAiFilteredIds(null)} className="ml-auto text-blue-500 hover:underline">清除</button>
+                                        </div>
+                                    )}
                                 </>
                             )}
                         </div>
 
-                        {/* Content Area */}
+                        {/* Content */}
                         <div className="flex-1 overflow-y-auto custom-scrollbar px-6 pb-6">
-                            
                             {selectedSpot ? (
                                 <div className="slide-in-right pt-6 h-full flex flex-col">
                                     <button onClick={() => setSelectedSpot(null)} className="mb-4 inline-flex items-center gap-2 text-sm font-bold text-gray-500 hover:text-black transition-colors bg-gray-100 px-3 py-1.5 rounded-full w-fit">
                                         <Icon name="arrow-left" size={16} /> Back
                                     </button>
                                     
-                                    <div className="space-y-6 flex-1 overflow-y-auto custom-scrollbar">
-                                        {/* Title Section */}
+                                    <div className="space-y-6 flex-1 overflow-y-auto custom-scrollbar pb-10">
                                         <div>
-                                            {visitedSpots.has(selectedSpot.id) && (
-                                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-green-100 text-green-800 text-xs font-bold mb-2">
-                                                    <Icon name="check" size={12} strokeWidth={3} /> VISITED
-                                                </span>
-                                            )}
+                                            {visitedSpots.has(selectedSpot.id) && <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-green-100 text-green-800 text-xs font-bold mb-2"><Icon name="check" size={12} strokeWidth={3} /> VISITED</span>}
                                             <h2 className="text-2xl font-bold text-gray-900 leading-tight">{selectedSpot.name}</h2>
                                             <p className="text-gray-500 font-medium mt-1">{selectedSpot.region} • {selectedSpot.length}</p>
                                         </div>
 
-                                        {/* Stats Grid */}
                                         <div className="grid grid-cols-2 gap-3">
-                                            <div className="bg-gray-50 p-3 rounded-2xl">
-                                                <div className="text-xs font-bold text-gray-400 uppercase">Rating</div>
-                                                <div className="flex items-center gap-1 mt-1">
-                                                    <span className="text-xl font-bold text-gray-900">{selectedSpot.rating}</span>
-                                                    <Icon name="star" size={16} className="text-yellow-400 fill-yellow-400" />
-                                                    <span className="text-xs text-gray-400 font-medium ml-1">({selectedSpot.reviews})</span>
-                                                </div>
-                                            </div>
-                                            <div className="bg-gray-50 p-3 rounded-2xl">
-                                                <div className="text-xs font-bold text-gray-400 uppercase">Difficulty</div>
-                                                <div className={`text-sm font-bold mt-1.5 ${selectedSpot.difficulty.includes('Hard') ? 'text-red-600' : (selectedSpot.difficulty.includes('Mod') ? 'text-orange-600' : 'text-green-600')}`}>
-                                                    {selectedSpot.difficulty}
-                                                </div>
-                                            </div>
+                                            <div className="bg-gray-50 p-3 rounded-2xl"><div className="text-xs font-bold text-gray-400 uppercase">Rating</div><div className="flex items-center gap-1 mt-1"><span className="text-xl font-bold text-gray-900">{selectedSpot.rating}</span><Icon name="star" size={16} className="text-yellow-400 fill-yellow-400" /><span className="text-xs text-gray-400 font-medium ml-1">({selectedSpot.reviews})</span></div></div>
+                                            <div className="bg-gray-50 p-3 rounded-2xl"><div className="text-xs font-bold text-gray-400 uppercase">Difficulty</div><div className={`text-sm font-bold mt-1.5 ${selectedSpot.difficulty.includes('Hard') ? 'text-red-600' : (selectedSpot.difficulty.includes('Mod') ? 'text-orange-600' : 'text-green-600')}`}>{selectedSpot.difficulty}</div></div>
                                         </div>
 
-                                        <p className="text-gray-600 leading-relaxed font-medium">
-                                            {selectedSpot.description}
-                                        </p>
-
-                                        <div className="space-y-3 pt-4 pb-6">
-                                            <button 
-                                                onClick={(e) => toggleVisited(e, selectedSpot.id)}
-                                                className={`w-full py-4 rounded-2xl font-bold transition-all flex justify-center items-center gap-2 ${visitedSpots.has(selectedSpot.id) ? 'bg-green-50 text-green-700' : 'bg-gray-900 text-white hover:bg-black shadow-lg hover:shadow-xl transform hover:-translate-y-0.5'}`}
-                                            >
-                                                <Icon name={visitedSpots.has(selectedSpot.id) ? "check" : "plus"} size={20} />
-                                                {visitedSpots.has(selectedSpot.id) ? "Marked as Visited" : "Mark as Visited"}
-                                            </button>
-                                            
-                                            <div className="grid grid-cols-2 gap-3">
-                                                <a href={selectedSpot.googleMapLink} target="_blank" className="flex justify-center items-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold py-3 rounded-xl transition-colors">
-                                                    <Icon name="map" size={18} /> Google Maps
-                                                </a>
-                                                <a href={`https://www.alltrails.com/search?q=${encodeURIComponent(selectedSpot.name)}`} target="_blank" className="flex justify-center items-center gap-2 bg-green-50 hover:bg-green-100 text-green-700 font-bold py-3 rounded-xl transition-colors">
-                                                    <Icon name="tree-pine" size={18} /> AllTrails
-                                                </a>
+                                        <p className="text-gray-600 leading-relaxed font-medium">{selectedSpot.description}</p>
+                                        
+                                        {/* AI PLANNER SECTION */}
+                                        <div className="bg-gradient-to-br from-indigo-50 to-blue-50 p-5 rounded-2xl border border-indigo-100">
+                                            <div className="flex justify-between items-center mb-3">
+                                                <h3 className="font-bold text-indigo-900 flex items-center gap-2"><Icon name="bot" size={18}/> AI 助手</h3>
+                                                {!aiPlannerContent && !isAiPlanning && (
+                                                    <button onClick={() => handleAiPlan(selectedSpot)} className="text-xs bg-indigo-600 text-white px-3 py-1.5 rounded-full font-bold hover:bg-indigo-700 transition-colors">✨ 生成攻略</button>
+                                                )}
                                             </div>
-                                            <a href={`https://www.komoot.com/discover/text?q=${encodeURIComponent(selectedSpot.name)}`} target="_blank" className="flex justify-center items-center gap-2 bg-lime-50 hover:bg-lime-100 text-lime-700 font-bold py-3 rounded-xl transition-colors">
-                                                <Icon name="map-pin" size={18} /> Komoot
-                                            </a>
+                                            
+                                            {isAiPlanning && (
+                                                <div className="flex items-center gap-2 text-sm text-indigo-600 animate-pulse">
+                                                    <Icon name="loader-2" className="animate-spin" size={16} /> 正在为您规划行程...
+                                                </div>
+                                            )}
+                                            
+                                            {aiPlannerContent && (
+                                                <div className="ai-content text-sm text-gray-700 prose prose-sm max-w-none" dangerouslySetInnerHTML={{__html: marked.parse(aiPlannerContent)}}></div>
+                                            )}
+                                        </div>
+
+                                        <div className="space-y-3 pt-2">
+                                            <button onClick={(e) => toggleVisited(e, selectedSpot.id)} className={`w-full py-4 rounded-2xl font-bold transition-all flex justify-center items-center gap-2 ${visitedSpots.has(selectedSpot.id) ? 'bg-green-50 text-green-700' : 'bg-gray-900 text-white hover:bg-black shadow-lg'}`}><Icon name={visitedSpots.has(selectedSpot.id) ? "check" : "plus"} size={20} />{visitedSpots.has(selectedSpot.id) ? "Marked as Visited" : "Mark as Visited"}</button>
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <a href={selectedSpot.googleMapLink} target="_blank" className="flex justify-center items-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold py-3 rounded-xl transition-colors"><Icon name="map" size={18} /> Google Maps</a>
+                                                <a href={`https://www.alltrails.com/search?q=${encodeURIComponent(selectedSpot.name)}`} target="_blank" className="flex justify-center items-center gap-2 bg-green-50 hover:bg-green-100 text-green-700 font-bold py-3 rounded-xl transition-colors"><Icon name="tree-pine" size={18} /> AllTrails</a>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             ) : (
                                 <div className="space-y-3 pt-2">
-                                    {sortedSpots.map(spot => {
+                                    {visibleSpots.map(spot => {
                                         const isVisited = visitedSpots.has(spot.id);
                                         return (
-                                            <div 
-                                                key={spot.id}
-                                                onClick={() => handleCardClick(spot)}
-                                                className="group bg-white p-0 rounded-2xl transition-all hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-0 pb-4 mb-2"
-                                            >
+                                            <div key={spot.id} onClick={() => handleCardClick(spot)} className="group bg-white p-0 rounded-2xl transition-all hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-0 pb-4 mb-2">
                                                 <div className="flex justify-between items-start">
                                                     <div className="flex-1">
                                                         <h3 className="font-bold text-gray-900 text-lg group-hover:text-blue-700 transition-colors">{spot.name}</h3>
                                                         <p className="text-sm text-gray-500 font-medium mt-0.5">{spot.location}</p>
-                                                        
                                                         <div className="flex items-center gap-3 mt-2">
-                                                            <div className="flex items-center gap-1 bg-gray-100 px-2 py-0.5 rounded-md">
-                                                                <Icon name="star" size={12} className="text-gray-900 fill-gray-900"/>
-                                                                <span className="text-xs font-bold text-gray-900">{spot.rating}</span>
-                                                            </div>
+                                                            <div className="flex items-center gap-1 bg-gray-100 px-2 py-0.5 rounded-md"><Icon name="star" size={12} className="text-gray-900 fill-gray-900"/><span className="text-xs font-bold text-gray-900">{spot.rating}</span></div>
                                                             <span className="text-xs font-bold text-gray-400">{spot.length}</span>
-                                                            {isVisited && (
-                                                                <span className="text-xs font-bold text-green-600 flex items-center gap-1">
-                                                                    <Icon name="check" size={12} strokeWidth={3} /> Visited
-                                                                </span>
-                                                            )}
+                                                            {isVisited && <span className="text-xs font-bold text-green-600 flex items-center gap-1"><Icon name="check" size={12} strokeWidth={3} /> Visited</span>}
                                                         </div>
                                                     </div>
-                                                    <div className="bg-gray-100 p-2 rounded-full group-hover:bg-gray-200 transition-colors">
-                                                        <Icon name="chevron-right" size={20} className="text-gray-400 group-hover:text-gray-600" />
-                                                    </div>
+                                                    <div className="bg-gray-100 p-2 rounded-full group-hover:bg-gray-200 transition-colors"><Icon name="chevron-right" size={20} className="text-gray-400 group-hover:text-gray-600" /></div>
                                                 </div>
                                             </div>
                                         );
@@ -658,32 +685,15 @@
                                 </div>
                             )}
                         </div>
-                        
-                        {/* Bottom Gradient Fade */}
                         <div className="absolute bottom-0 left-0 w-full h-12 bg-gradient-to-t from-white to-transparent rounded-b-3xl pointer-events-none"></div>
                     </div>
 
-                    {/* Sidebar Toggle (Closed state) */}
-                    {!sidebarOpen && (
-                        <button 
-                            onClick={() => setSidebarOpen(true)} 
-                            className="absolute top-6 left-6 z-[500] bg-white p-4 rounded-full shadow-xl hover:bg-gray-50 text-gray-900 transition-transform hover:scale-110"
-                        >
-                            <Icon name="menu" strokeWidth={2.5} />
-                        </button>
-                    )}
+                    {!sidebarOpen && <button onClick={() => setSidebarOpen(true)} className="absolute top-6 left-6 z-[500] bg-white p-4 rounded-full shadow-xl hover:bg-gray-50 text-gray-900 transition-transform hover:scale-110"><Icon name="menu" strokeWidth={2.5} /></button>}
 
-                    {/* Map Controls - Floating Pills */}
                     <div className="absolute top-6 right-6 z-[500] flex flex-col gap-3 items-end">
-                        <button 
-                            onClick={() => setFogMode(!fogMode)} 
-                            className={`flex items-center gap-2 px-5 py-3 rounded-full shadow-xl font-bold transition-all transform hover:scale-105 ${fogMode ? 'bg-gray-900 text-white' : 'bg-white text-gray-900'}`}
-                        >
-                            <Icon name={fogMode ? "eye-off" : "eye"} size={20} />
-                            <span className="hidden md:inline">{fogMode ? "Fog Mode On" : "Fog Mode Off"}</span>
-                        </button>
+                        <button onClick={() => setFogMode(!fogMode)} className={`flex items-center gap-2 px-5 py-3 rounded-full shadow-xl font-bold transition-all transform hover:scale-105 ${fogMode ? 'bg-gray-900 text-white' : 'bg-white text-gray-900'}`}><Icon name={fogMode ? "eye-off" : "eye"} size={20} /><span className="hidden md:inline">{fogMode ? "Fog Mode On" : "Fog Mode Off"}</span></button>
                     </div>
-
+                    <canvas id="fog-canvas" style={{ display: 'none' }}></canvas>
                     <div ref={mapRef} id="map" className="h-full w-full bg-gray-100"></div>
                 </div>
             );
