@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>伦敦周边徒步热度地图 (AllTrails Data Edition)</title>
+    <title>英国全境徒步指南 (UK Best Hikes)</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -24,32 +24,59 @@
     <script src="https://unpkg.com/lucide@latest"></script>
 
     <style>
-        body { margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
-        #map { height: 100%; width: 100%; z-index: 0; }
-        .leaflet-popup-content-wrapper { border-radius: 0.5rem; padding: 0; overflow: hidden; }
-        .leaflet-popup-content { margin: 0; }
+        /* Using Inter to mimic the clean, humanist sans-serif feel of Johnston */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
         
-        /* Custom Scrollbar */
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        body { margin: 0; padding: 0; font-family: 'Inter', sans-serif; background-color: #e5e7eb; }
+        #map { height: 100%; width: 100%; z-index: 0; }
+        
+        /* Leaflet Customization to match clean style */
+        .leaflet-popup-content-wrapper { border-radius: 1rem; padding: 0; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1); }
+        .leaflet-popup-content { margin: 0; }
+        .leaflet-control-zoom { border: none !important; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1) !important; border-radius: 0.75rem !important; overflow: hidden; }
+        .leaflet-bar a { background-color: white !important; color: #111827 !important; border-bottom: 1px solid #f3f4f6 !important; }
+        .leaflet-bar a:hover { background-color: #f9fafb !important; }
+        
+        /* Custom Scrollbar - Minimalist */
+        .custom-scrollbar::-webkit-scrollbar { width: 0px; background: transparent; } /* Hidden scrollbar for cleaner look, scroll still works */
+        
+        /* Hide scrollbar for horizontal regions */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
         /* Animation */
         @keyframes slideIn {
-            from { transform: translateX(-100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
         }
-        .slide-in { animation: slideIn 0.3s ease-out forwards; }
+        .slide-in { animation: slideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
         
         .custom-div-icon { background: transparent; border: none; }
         
         /* Star Rating */
         .star-filled { color: #fbbf24; }
-        .star-empty { color: #e5e7eb; }
+        .star-empty { color: #d1d5db; }
+
+        /* Fog Canvas Layer */
+        #fog-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 400;
+            pointer-events: none;
+            transition: opacity 0.5s ease-in-out;
+        }
+
+        /* TfL Style Specifics */
+        .tfl-shadow { box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        .tfl-card { background: white; border-radius: 1.5rem; }
+        .tfl-blue { color: #0019a8; }
+        .tfl-bg-blue { background-color: #0019a8; }
     </style>
 </head>
-<body class="bg-gray-50 h-screen w-screen overflow-hidden flex flex-col md:flex-row">
+<body class="h-screen w-screen overflow-hidden relative">
 
     <div id="root" class="h-full w-full"></div>
 
@@ -61,551 +88,170 @@
     <script type="text/babel">
         const { useState, useEffect, useRef, useMemo } = React;
 
-        // Base Data (Expanded)
-        const initialHikingSpots = [
-            {
-                id: 1,
-                name: "七姐妹岩 (Seven Sisters Cliffs)",
-                routeName: "Seaford to Eastbourne",
-                location: "East Sussex",
-                coords: [50.7600, 0.1600],
-                heat: 98,
-                rating: 4.9,
-                reviews: 2150,
-                length: "21.8 km",
-                description: "英国最具标志性的白色白垩悬崖。AllTrails 上评分最高的路线之一，通常从 Seaford 火车站出发，沿着起伏的海岸线走到 Eastbourne。",
-                difficulty: "困难 (Hard)",
-                tags: ["海景", "悬崖", "必去"],
-                googleMapLink: "https://www.google.com/maps/search/?api=1&query=Seven+Sisters+Cliffs"
-            },
-            {
-                id: 2,
-                name: "博克斯山 (Box Hill)",
-                routeName: "The Box Hill Hike (Circular)",
-                location: "Surrey",
-                coords: [51.2492, -0.3151],
-                heat: 92,
-                rating: 4.6,
-                reviews: 1596,
-                length: "12.8 km",
-                description: "这条环形路线包括陡峭的台阶（著名的275级台阶）和令人惊叹的韦尔德景观。是萨里山 (Surrey Hills) 最受欢迎的路线。",
-                difficulty: "中等 (Moderate)",
-                tags: ["全景", "挑战", "台阶"],
-                googleMapLink: "https://www.google.com/maps/search/?api=1&query=Box+Hill+Surrey"
-            },
-            {
-                id: 3,
-                name: "埃平森林 (Epping Forest)",
-                routeName: "Oak Trail",
-                location: "Greater London/Essex",
-                coords: [51.6715, 0.1014],
-                heat: 85,
-                rating: 4.6,
-                reviews: 557,
-                length: "10.2 km",
-                description: "伦敦东北部的古老皇家林地。从 Theydon Bois 地铁站出发，穿过古老的林地、鹿苑和开阔的缓冲区。",
-                difficulty: "中等 (Moderate)",
-                tags: ["森林", "古迹", "地铁直达"],
-                googleMapLink: "https://www.google.com/maps/search/?api=1&query=Epping+Forest+Oak+Trail"
-            },
-            {
-                id: 4,
-                name: "汉普斯特德荒野 (Hampstead Heath)",
-                routeName: "Parliament Hill Circular",
-                location: "London",
-                coords: [51.5600, -0.1600],
-                heat: 95,
-                rating: 4.7,
-                reviews: 890,
-                length: "6.5 km",
-                description: "伦敦市内最受欢迎的绿地。议会山提供伦敦天际线的最佳观赏点。适合所有水平的徒步者。",
-                difficulty: "容易 (Easy)",
-                tags: ["城市景观", "公园", "休闲"],
-                googleMapLink: "https://www.google.com/maps/search/?api=1&query=Parliament+Hill+Viewpoint"
-            },
-            {
-                id: 5,
-                name: "多佛白崖 (White Cliffs of Dover)",
-                routeName: "Visitor Centre to South Foreland Lighthouse",
-                location: "Kent",
-                coords: [51.1316, 1.3372],
-                heat: 88,
-                rating: 4.7,
-                reviews: 1200,
-                length: "6.0 km",
-                description: "一条平缓的悬崖顶端步道，往返于游客中心和南福兰灯塔之间。天气好时可以看到法国。",
-                difficulty: "容易 (Easy)",
-                tags: ["历史", "海峡景观", "地标"],
-                googleMapLink: "https://www.google.com/maps/search/?api=1&query=White+Cliffs+of+Dover+Visitor+Centre"
-            },
-            {
-                id: 6,
-                name: "里士满公园 (Richmond Park)",
-                routeName: "Tamsin Trail",
-                location: "London",
-                coords: [51.4333, -0.2780],
-                heat: 89,
-                rating: 4.8,
-                reviews: 1100,
-                length: "11.8 km",
-                description: "Tamsin Trail 是一条环绕整个公园边界的碎石路。非常适合长跑或骑行，沿途几乎肯定能看到野生鹿群。",
-                difficulty: "容易/中等 (Easy/Mod)",
-                tags: ["野生动物", "环线", "骑行"],
-                googleMapLink: "https://www.google.com/maps/search/?api=1&query=Richmond+Park+Isabella+Plantation"
-            },
-            {
-                id: 7,
-                name: "阿什里奇庄园 (Ashridge Estate)",
-                routeName: "Ivinghoe Beacon Loop",
-                location: "Hertfordshire",
-                coords: [51.7980, -0.5600],
-                heat: 78,
-                rating: 4.8,
-                reviews: 891,
-                length: "14.1 km",
-                description: "这条路线结合了古老的林地和 Ivinghoe Beacon 的开阔视野。春季这里有全英最壮观的蓝铃花海。",
-                difficulty: "中等 (Moderate)",
-                tags: ["蓝铃花", "电影取景", "林地"],
-                googleMapLink: "https://www.google.com/maps/search/?api=1&query=Ashridge+Estate+Visitor+Centre"
-            },
-            {
-                id: 8,
-                name: "切斯谷步道 (Chess Valley Walk)",
-                routeName: "Rickmansworth to Chesham",
-                location: "Chilterns",
-                coords: [51.7040, -0.6122],
-                heat: 75,
-                rating: 4.5,
-                reviews: 420,
-                length: "16.0 km",
-                description: "一条点对点的经典路线，连接两个地铁站。沿着切斯河 (River Chess) 穿越奇尔特恩丘陵。",
-                difficulty: "中等 (Moderate)",
-                tags: ["河流", "田园", "地铁直达"],
-                googleMapLink: "https://www.google.com/maps/search/?api=1&query=Chess+Valley+Walk+Rickmansworth"
-            },
-            {
-                id: 9,
-                name: "魔鬼堤 (Devil's Dyke)",
-                routeName: "Devil's Dyke & Newtimber Hill",
-                location: "West Sussex",
-                coords: [50.8850, -0.2050],
-                heat: 82,
-                rating: 4.7,
-                reviews: 630,
-                length: "8.5 km",
-                description: "位于南唐斯国家公园。这条路线不仅能看到巨大的干谷，还能欣赏到布莱顿海岸的景色。",
-                difficulty: "中等 (Moderate)",
-                tags: ["山谷", "视野", "日落"],
-                googleMapLink: "https://www.google.com/maps/search/?api=1&query=Devil's+Dyke+Brighton"
-            },
-            {
-                id: 10,
-                name: "利斯山 (Leith Hill)",
-                routeName: "Leith Hill Circular from Friday Street",
-                location: "Surrey",
-                coords: [51.1760, -0.3720],
-                heat: 70,
-                rating: 4.7,
-                reviews: 450,
-                length: "10.0 km",
-                description: "攀登英格兰东南部的最高点。路线穿过幽静的深林，最终到达哥特式塔楼。",
-                difficulty: "困难 (Hard)",
-                tags: ["最高点", "塔楼", "森林"],
-                googleMapLink: "https://www.google.com/maps/search/?api=1&query=Leith+Hill+Tower"
-            },
-            {
-                id: 11,
-                name: "戈林峡 (Goring Gap)",
-                routeName: "Goring & Streatley Circular",
-                location: "Oxfordshire",
-                coords: [51.5210, -1.1370],
-                heat: 65,
-                rating: 4.6,
-                reviews: 320,
-                length: "8.0 km",
-                description: "泰晤士河最壮丽的一段。路线结合了河畔步道和丘陵景观，两个村庄 Goring 和 Streatley 都非常有英式风情。",
-                difficulty: "容易/中等 (Easy/Mod)",
-                tags: ["泰晤士河", "河畔", "村庄"],
-                googleMapLink: "https://www.google.com/maps/search/?api=1&query=Goring+and+Streatley"
-            },
-            {
-                id: 12,
-                name: "黑斯廷斯郊野公园 (Hastings Country Park)",
-                routeName: "Firehills & Cliffs Circular",
-                location: "East Sussex",
-                coords: [50.8732, 0.6433],
-                heat: 60,
-                rating: 4.6,
-                reviews: 210,
-                length: "6.5 km",
-                description: "相比七姐妹岩，这里更加原始和狂野。拥有独特的高耸砂岩悬崖和隐秘的峡谷 (Glens)。",
-                difficulty: "中等 (Moderate)",
-                tags: ["悬崖", "原始", "海景"],
-                googleMapLink: "https://www.google.com/maps/search/?api=1&query=Hastings+Country+Park"
-            },
-            {
-                id: 13,
-                name: "艾文霍灯塔 (Ivinghoe Beacon)",
-                routeName: "Ridgeway Start/End",
-                location: "Buckinghamshire",
-                coords: [51.8360, -0.6298],
-                heat: 72,
-                rating: 4.7,
-                reviews: 410,
-                length: "12.8 km",
-                description: "奇尔特恩丘陵的制高点。这里视野极其开阔，可以看到蜿蜒的 Ridgeway 步道。风很大，适合放风筝。",
-                difficulty: "中等 (Moderate)",
-                tags: ["山脊", "视野", "历史步道"],
-                googleMapLink: "https://www.google.com/maps/search/?api=1&query=Ivinghoe+Beacon+Buckinghamshire"
-            },
-            {
-                id: 14,
-                name: "温布尔登公地 (Wimbledon Common)",
-                routeName: "Windmill & Woodland Walk",
-                location: "London",
-                coords: [51.4376, -0.2320],
-                heat: 76,
-                rating: 4.5,
-                reviews: 580,
-                length: "7.0 km",
-                description: "围绕著名的风车，穿过石楠荒原和森林。这里感觉像是一个真正的乡村，尽管它就在伦敦西南部。",
-                difficulty: "容易 (Easy)",
-                tags: ["风车", "荒地", "城市逃离"],
-                googleMapLink: "https://www.google.com/maps/search/?api=1&query=Wimbledon+Common+Windmill"
-            },
-            {
-                id: 15,
-                name: "恩斯福德城堡 (Eynsford Castle)",
-                routeName: "Darent Valley Path",
-                location: "Kent",
-                coords: [51.3706, 0.2149],
-                heat: 68,
-                rating: 4.5,
-                reviews: 290,
-                length: "9.5 km",
-                description: "被称为“肯特郡的宝石”。路线经过诺曼城堡废墟、罗马别墅和 Lullingstone 城堡。",
-                difficulty: "容易 (Easy)",
-                tags: ["废墟", "历史", "乡村"],
-                googleMapLink: "https://www.google.com/maps/search/?api=1&query=Eynsford+Castle+Kent"
-            },
-            {
-                id: 16,
-                name: "莱伊港 (Rye Harbour)",
-                routeName: "Nature Reserve Loop",
-                location: "East Sussex",
-                coords: [50.9367, 0.7635],
-                heat: 64,
-                rating: 4.6,
-                reviews: 350,
-                length: "8.0 km",
-                description: "由碎石路组成的平坦步道，穿越盐沼和泻湖。是观鸟者的天堂，拥有独特的海岸荒凉美感。",
-                difficulty: "容易 (Easy)",
-                tags: ["观鸟", "湿地", "海岸"],
-                googleMapLink: "https://www.google.com/maps/search/?api=1&query=Rye+Harbour+Nature+Reserve"
-            },
-            {
-                id: 17,
-                name: "马洛 (Marlow)",
-                routeName: "Marlow to Cookham Thames Path",
-                location: "Buckinghamshire",
-                coords: [51.5685, -0.7763],
-                heat: 74,
-                rating: 4.7,
-                reviews: 600,
-                length: "9.0 km",
-                description: "典型的英式泰晤士河风光。经过 Winter Hill，可以俯瞰泰晤士河谷。这里的酒吧和餐厅也是一大亮点。",
-                difficulty: "容易 (Easy)",
-                tags: ["河畔", "美食", "平坦"],
-                googleMapLink: "https://www.google.com/maps/search/?api=1&query=Marlow+Thames+Path"
-            },
-            {
-                id: 18,
-                name: "康斯太布尔乡村 (Dedham Vale)",
-                routeName: "Flatford Mill Loop",
-                location: "Essex/Suffolk",
-                coords: [51.9716, 0.9459],
-                heat: 70,
-                rating: 4.8,
-                reviews: 750,
-                length: "7.0 km",
-                description: "走进约翰·康斯太布尔的油画世界。Flatford Mill 和 Willy Lott's House 是标志性景点。",
-                difficulty: "容易 (Easy)",
-                tags: ["艺术", "田园", "河流"],
-                googleMapLink: "https://www.google.com/maps/search/?api=1&query=Flatford+Mill+Dedham+Vale"
-            },
-            {
-                id: 19,
-                name: "弗吉尼亚水湖 (Virginia Water)",
-                routeName: "The Lake Circuit",
-                location: "Surrey",
-                coords: [51.4111, -0.6028],
-                heat: 80,
-                rating: 4.8,
-                reviews: 1300,
-                length: "7.2 km",
-                description: "围绕巨大人工湖的平坦铺装路面。可以看到瀑布、图腾柱和从利比亚搬来的罗马遗迹。",
-                difficulty: "容易 (Easy)",
-                tags: ["湖泊", "家庭", "遗迹"],
-                googleMapLink: "https://www.google.com/maps/search/?api=1&query=Virginia+Water+Lake+Car+Park"
-            },
-            {
-                id: 20,
-                name: "圣奥尔本斯 (St Albans)",
-                routeName: "Verulamium Park & River Ver",
-                location: "Hertfordshire",
-                coords: [51.7521, -0.3550],
-                heat: 77,
-                rating: 4.6,
-                reviews: 510,
-                length: "5.5 km",
-                description: "穿越古罗马城市 Verulamium 的遗址。公园内有大湖、罗马城墙遗迹，紧邻宏伟的圣奥尔本斯大教堂。",
-                difficulty: "容易 (Easy)",
-                tags: ["古罗马", "大教堂", "公园"],
-                googleMapLink: "https://www.google.com/maps/search/?api=1&query=Verulamium+Park+St+Albans"
-            },
-            {
-                id: 23,
-                name: "布罗克斯本森林 (Broxbourne Woods)",
-                routeName: "National Nature Reserve Trail",
-                location: "Hertfordshire",
-                coords: [51.7450, -0.0550],
-                heat: 66,
-                rating: 4.7,
-                reviews: 180,
-                length: "17.5 km",
-                description: "赫特福德郡唯一的国家级自然保护区。这里是极其古老的无梗花栎林，地形起伏，充满野趣。",
-                difficulty: "中等 (Moderate)",
-                tags: ["古老森林", "自然保护区", "幽静"],
-                googleMapLink: "https://www.google.com/maps/search/?api=1&query=Broxbourne+Woods"
-            },
-            {
-                id: 24,
-                name: "沃尔丁汉姆 (Woldingham)",
-                routeName: "Woldingham Countryside Walk",
-                location: "Surrey",
-                coords: [51.2850, -0.0400],
-                heat: 63,
-                rating: 4.8,
-                reviews: 236,
-                length: "8.7 km",
-                description: "AllTrails 上的高分冷门路线。可以看到伦敦全景，经过名为“The Ridge”的壮观山脊线。",
-                difficulty: "中等 (Moderate)",
-                tags: ["山脊", "冷门佳作", "视野"],
-                googleMapLink: "https://www.google.com/maps/search/?api=1&query=Woldingham+School"
-            },
-            {
-                id: 25,
-                name: "魔鬼大潘趣碗 (Devil's Punch Bowl)",
-                routeName: "Gibbet Hill & The Temple of the Four Winds",
-                location: "Surrey",
-                coords: [51.1144, -0.7294],
-                heat: 94,
-                rating: 4.8,
-                reviews: 1450,
-                length: "10.2 km",
-                description: "令人惊叹的天然剧场状干谷。从 Gibbet Hill 可以看到伦敦天际线。地形多变，从石楠荒原到茂密森林。",
-                difficulty: "中等 (Moderate)",
-                tags: ["天然剧场", "希瑟花", "视野"],
-                googleMapLink: "https://www.google.com/maps/search/?api=1&query=Devil's+Punch+Bowl+Hindhead"
-            },
-            {
-                id: 26,
-                name: "诺尔公园 (Knole Park)",
-                routeName: "Knole House & Deer Park Loop",
-                location: "Kent (Sevenoaks)",
-                coords: [51.2668, 0.2036],
-                heat: 87,
-                rating: 4.7,
-                reviews: 890,
-                length: "7.5 km",
-                description: "肯特郡仅存的中世纪鹿苑。这里有一座宏伟的詹姆斯一世时期豪宅，成群的野生鹿在古老的橡树间漫步。",
-                difficulty: "容易 (Easy)",
-                tags: ["野生鹿群", "庄园", "家庭"],
-                googleMapLink: "https://www.google.com/maps/search/?api=1&query=Knole+Park+Sevenoaks"
-            },
-            {
-                id: 27,
-                name: "库姆山与契克斯 (Coombe Hill)",
-                routeName: "Coombe Hill & Chequers Court",
-                location: "Buckinghamshire",
-                coords: [51.7610, -0.7700],
-                heat: 81,
-                rating: 4.6,
-                reviews: 430,
-                length: "11.2 km",
-                description: "登上奇尔特恩丘陵的最高点，俯瞰艾尔斯伯里谷。路线会经过英国首相的乡村官邸 Chequers。",
-                difficulty: "中等 (Moderate)",
-                tags: ["首相官邸", "最高点", "纪念碑"],
-                googleMapLink: "https://www.google.com/maps/search/?api=1&query=Coombe+Hill+Buckinghamshire"
-            },
-            {
-                id: 28,
-                name: "阿什当森林 (Ashdown Forest)",
-                routeName: "Pooh Sticks Bridge & 100 Acre Wood",
-                location: "East Sussex",
-                coords: [51.0760, 0.1080],
-                heat: 88,
-                rating: 4.7,
-                reviews: 1250,
-                length: "5.0 km",
-                description: "《小熊维尼》故事的原型地。你可以去维尼扔树枝的桥 (Pooh Sticks Bridge) 玩耍，探索百亩森林。",
-                difficulty: "容易 (Easy)",
-                tags: ["小熊维尼", "亲子", "森林"],
-                googleMapLink: "https://www.google.com/maps/search/?api=1&query=Pooh+Sticks+Bridge"
-            },
-            {
-                id: 29,
-                name: "圣玛莎山 (St Martha's Hill)",
-                routeName: "Newlands Corner & St Martha's Loop",
-                location: "Surrey",
-                coords: [51.2248, -0.5294],
-                heat: 84,
-                rating: 4.9,
-                reviews: 680,
-                length: "11.0 km",
-                description: "AllTrails 评分极高。山顶孤立的教堂是地标，沿途不仅有独特的沙质土壤步道，还能从 Newlands Corner 欣赏到极佳的全景。",
-                difficulty: "中等 (Moderate)",
-                tags: ["山顶教堂", "沙地", "全景"],
-                googleMapLink: "https://www.google.com/maps/search/?api=1&query=St+Martha's+Hill+Guildford"
-            },
-            {
-                id: 30,
-                name: "帕克兰步道 (Parkland Walk)",
-                routeName: "Finsbury Park to Alexandra Palace",
-                location: "London",
-                coords: [51.5744, -0.1100],
-                heat: 91,
-                rating: 4.5,
-                reviews: 2100,
-                length: "7.2 km",
-                description: "伦敦最长的当地自然保护区，由废弃铁路线改建。沿途有独特的涂鸦艺术、幽静的林荫道，终点是亚历山大宫。",
-                difficulty: "容易 (Easy)",
-                tags: ["废弃铁路", "涂鸦", "城市绿廊"],
-                googleMapLink: "https://www.google.com/maps/search/?api=1&query=Parkland+Walk+London"
-            },
-            {
-                id: 31,
-                name: "邓斯特布尔唐斯 (Dunstable Downs)",
-                routeName: "Whipsnade & Downs Circular",
-                location: "Bedfordshire",
-                coords: [51.8650, -0.5450],
-                heat: 79,
-                rating: 4.7,
-                reviews: 540,
-                length: "7.2 km",
-                description: "贝德福德郡的最高点，以开阔的白垩草地和滑翔翼飞行闻名。这里视野极其辽阔，还有巨大的狮子地画。",
-                difficulty: "中等 (Moderate)",
-                tags: ["滑翔翼", "开阔视野", "白垩草地"],
-                googleMapLink: "https://www.google.com/maps/search/?api=1&query=Dunstable+Downs"
-            },
-            {
-                id: 32,
-                name: "京都花园与荷兰公园 (Kyoto Garden)",
-                routeName: "Holland Park Loop",
-                location: "London (Kensington)",
-                coords: [51.5034, -0.2033],
-                heat: 93,
-                rating: 4.8,
-                reviews: 3200,
-                length: "3.2 km",
-                description: "伦敦市中心的隐秘宝石。拥有令人惊叹的日式京都花园和小型瀑布。虽然路线较短，但非常适合摄影和寻找城市中的宁静。",
-                difficulty: "容易 (Easy)",
-                tags: ["瀑布", "日式庭院", "城市绿洲"],
-                googleMapLink: "https://www.google.com/maps/search/?api=1&query=Kyoto+Garden+London"
-            },
-            {
-                id: 33,
-                name: "摩尔峡谷步道 (Mole Gap Trail)",
-                routeName: "Leatherhead to Dorking",
-                location: "Surrey",
-                coords: [51.2950, -0.3290],
-                heat: 74,
-                rating: 4.6,
-                reviews: 480,
-                length: "10.0 km",
-                description: "这条路线穿越英格兰最大的葡萄园 Denbies Wine Estate。沿途风景如画，结合了河流、葡萄园和北唐斯丘陵的景色。",
-                difficulty: "中等 (Moderate)",
-                tags: ["葡萄园", "河流", "火车站直达"],
-                googleMapLink: "https://www.google.com/maps/search/?api=1&query=Denbies+Wine+Estate"
-            },
-            {
-                id: 34,
-                name: "卡西奥伯里公园 (Cassiobury Park)",
-                routeName: "Grand Union Canal & Waterfall",
-                location: "Watford",
-                coords: [51.6570, -0.4350],
-                heat: 72,
-                rating: 4.5,
-                reviews: 650,
-                length: "5.5 km",
-                description: "非常适合家庭的公园。沿着大联合运河 (Grand Union Canal) 漫步，可以看到船闸和古老的水磨坊遗迹。",
-                difficulty: "容易 (Easy)",
-                tags: ["运河", "家庭", "野餐"],
-                googleMapLink: "https://www.google.com/maps/search/?api=1&query=Cassiobury+Park"
-            },
-            {
-                id: 35,
-                name: "赫弗城堡 (Hever Castle)",
-                routeName: "Eden Valley Walk",
-                location: "Kent",
-                coords: [51.1880, 0.1130],
-                heat: 76,
-                rating: 4.7,
-                reviews: 520,
-                length: "9.5 km",
-                description: "安妮·博林的童年故居。这条路线穿过伊甸谷 (Eden Valley)，结合了历史悠久的都铎建筑和典型的肯特郡乡村风光。",
-                difficulty: "容易/中等 (Easy/Mod)",
-                tags: ["城堡", "历史", "乡村"],
-                googleMapLink: "https://www.google.com/maps/search/?api=1&query=Hever+Castle"
-            },
-            {
-                id: 36,
-                name: "阿宾杰粗林 (Abinger Roughs)",
-                routeName: "Bluebells & Witches Broom",
-                location: "Surrey",
-                coords: [51.2180, -0.4220],
-                heat: 69,
-                rating: 4.6,
-                reviews: 310,
-                length: "6.0 km",
-                description: "以古老的橡树和“女巫扫帚”松树而闻名。达尔文曾在这里散步。春季是观赏蓝铃花的绝佳地点，也是 hidden gem。",
-                difficulty: "容易 (Easy)",
-                tags: ["蓝铃花", "古树", "名人足迹"],
-                googleMapLink: "https://www.google.com/maps/search/?api=1&query=Abinger+Roughs"
-            },
-            {
-                id: 37,
-                name: "吉尔福德城堡 (Guildford Castle)",
-                routeName: "River Wey & St Catherine's Hill",
-                location: "Surrey",
-                coords: [51.2360, -0.5730],
-                heat: 80,
-                rating: 4.6,
-                reviews: 740,
-                length: "8.5 km",
-                description: "从市中心的城堡出发，沿着韦河 (River Wey) 漫步，经过古老的 St Catherine's Chapel 废墟。城市与自然的完美结合。",
-                difficulty: "容易 (Easy)",
-                tags: ["河畔", "废墟", "城市漫步"],
-                googleMapLink: "https://www.google.com/maps/search/?api=1&query=Guildford+Castle"
-            },
-            {
-                id: 38,
-                name: "温多弗森林 (Wendover Woods)",
-                routeName: "Firecrest Trail & Highest Point",
-                location: "Buckinghamshire",
-                coords: [51.7480, -0.7200],
-                heat: 77,
-                rating: 4.7,
-                reviews: 920,
-                length: "7.0 km",
-                description: "奇尔特恩丘陵的最高点。这里有适合儿童的 Gruffalo 小径，也有适合徒步者的挑战路线。设施完善，非常受欢迎。",
-                difficulty: "中等 (Moderate)",
-                tags: ["森林", "亲子", "最高点"],
-                googleMapLink: "https://www.google.com/maps/search/?api=1&query=Wendover+Woods"
-            }
+        // --- USER HISTORY DATA ---
+        const USER_HISTORY_LOCATIONS = [
+            { name: "Margate", coords: [51.3895, 1.3868] },
+            { name: "Eastwell Manor", coords: [51.185, 0.880] },
+            { name: "Dulwich Park", coords: [51.443, -0.076] },
+            { name: "Crystal Palace Park", coords: [51.423, -0.073] },
+            { name: "Croydon", coords: [51.376, -0.098] },
+            { name: "Headley Heath", coords: [51.272, -0.278] },
+            { name: "Drumsheds", coords: [51.610, -0.054] },
+            { name: "North Finchley", coords: [51.614, -0.176] },
+            { name: "Stocker's Lake", coords: [51.636, -0.478] },
+            { name: "Alexandra Park", coords: [51.596, -0.129] },
+            { name: "Royal Air Force Museum", coords: [51.599, -0.240] },
+            { name: "Richmond", coords: [51.461, -0.303] },
+            { name: "Tenpin Acton", coords: [51.526, -0.272] },
+            { name: "Wanstead Flats", coords: [51.560, 0.035] },
+            { name: "Walthamstow Wetlands", coords: [51.583, -0.056] },
+            { name: "Hurst Park", coords: [51.403, -0.360] },
+            { name: "Otford", coords: [51.312, 0.190] },
+            { name: "Glynde", coords: [50.866, 0.067] },
+            { name: "Brighton", coords: [50.822, -0.137] },
+            { name: "Rydal Cave", coords: [54.453, -3.013] },
+            { name: "Keswick", coords: [54.601, -3.136] },
+            { name: "Dunseverick Castle", coords: [55.238, -6.449] },
+            { name: "Giant's Causeway", coords: [55.240, -6.511] },
+            { name: "The Dark Hedges", coords: [55.134, -6.381] },
+            { name: "Belfast", coords: [54.597, -5.930] },
+            { name: "Edinburgh", coords: [55.953, -3.188] },
+            { name: "Waterhead", coords: [54.423, -2.964] },
+            { name: "Bowness-on-Windermere", coords: [54.365, -2.919] },
+            { name: "York", coords: [53.959, -1.087] },
+            { name: "Inverness", coords: [57.477, -4.224] },
+            { name: "Urquhart Castle", coords: [57.324, -4.442] },
+            { name: "Pitlochry", coords: [56.704, -3.729] },
+            { name: "Portree", coords: [57.412, -6.196] },
+            { name: "Kyle of Lochalsh", coords: [57.281, -5.715] },
+            { name: "Dornie", coords: [57.279, -5.515] },
+            { name: "Willen Lake (Milton Keynes)", coords: [52.054, -0.720] },
+            { name: "Cambridge", coords: [52.205, 0.121] },
+            { name: "Fairlop Waters", coords: [51.597, 0.093] },
+            { name: "Hadleigh Castle", coords: [51.543, 0.608] },
+            { name: "Oxford", coords: [51.752, -1.257] },
+            { name: "The Farmer's Dog", coords: [51.792, -1.603] },
+            { name: "Stow-on-the-Wold", coords: [51.930, -1.720] },
+            { name: "Bicester", coords: [51.899, -1.155] },
+            { name: "Diddly Squat Farm", coords: [51.916, -1.543] },
+            { name: "Chippenham", coords: [51.458, -2.116] },
+            { name: "Betws-y-Coed", coords: [53.092, -3.801] },
+            { name: "Conwy Castle", coords: [53.280, -3.825] },
+            { name: "Llandudno", coords: [53.324, -3.827] },
+            { name: "Chester", coords: [53.193, -2.893] },
+            { name: "Windsor Castle", coords: [51.483, -0.604] },
+            { name: "Hampton Court", coords: [51.403, -0.337] },
+            { name: "Kew Gardens", coords: [51.478, -0.295] },
+            { name: "London Wetland Centre", coords: [51.475, -0.234] },
+            { name: "Reading", coords: [51.454, -0.978] },
+            { name: "Wanstead Park", coords: [51.569, 0.043] },
+            { name: "Herne Bay", coords: [51.370, 1.125] },
+            { name: "Chatham", coords: [51.376, 0.526] },
+            { name: "Hungerford", coords: [51.413, -1.512] },
+            { name: "Sandhurst", coords: [51.345, -0.793] },
+            { name: "Birmingham", coords: [52.486, -1.890] },
+            { name: "Bath", coords: [51.375, -2.359] },
+            { name: "Portsmouth", coords: [50.819, -1.087] },
+            { name: "Weybridge", coords: [51.371, -0.457] },
+            { name: "Southend-on-Sea", coords: [51.545, 0.707] },
+            { name: "Canterbury", coords: [51.280, 1.078] },
+            { name: "Folkestone", coords: [51.081, 1.173] },
+            { name: "Ardingly", coords: [51.047, -0.078] },
+            { name: "Newhaven", coords: [50.794, 0.053] },
+            { name: "Lewes", coords: [50.874, 0.012] },
+            { name: "Hassocks", coords: [50.923, -0.142] }
         ];
 
-        // Component: MapIcon (Lucide)
+        // Raw Text List
+        const USER_RAW_LIST = `Eastwell Manor, Champneys Hotel & Spa, Margate, Dulwich Park, Crystal Palace Park, Croydon, National Trust - Headley Heath, Oak Trail Trailhead, Theydon Bois Golf Club, Drumsheds, Vue Cinema London - North Finchley, River Chess, Stocker's Lake Nature Reserve, Alexandra Park, Royal Air Force Museum London, Richmond, Tenpin Acton, Hastings Country Park, Wanstead Flats, Walthamstow Wetlands, London Wildlife Trust, Hurst Park, Otford Kent Circular Walk, Glynde, Brighton, Dover, Rydal Cave, Keswick, Dunseverick Castle, Giant's Causeway, The Dark Hedges, Belfast, Edinburgh, Waterhead, Bowness-on-Windermere, Windermere, York, Nevis Range Gondola Top, Inverness, Urquhart Castle, Pitlochry, Portree, The Brother’s Point, Kyle of Lochalsh, Dornie, Willen Lake, Cambridge, Preston Campsite, Birling Gap, Fairlop Waters Country Park, Hadleigh Castle, Oxford, Gomshall, The Farmer’s Dog, Stow-on-the-Wold, Bourton-on-the-Water, Bicester, Diddly Squat Farm Shop, Chippenham, New Forest National Park, Chesham, Dorking, Betws-y-Coed, Dolgarrog, Conwy Castle, Llandudno, Chester, Windsor Castle, Hampton Court Palace, Royal Botanic Gardens, Kew, WWT London Wetland Centre, Richmond Park, Reading, Box Hill, Epping Forest, Wanstead Park, Herne Bay, Eynsford, Knole Park, Chatham, Snowdon, Hungerford, Cotswolds, River Coln, Godalming, Guildford, Sandhurst, Birmingham, Pen y Fan, Bath, Durdle Door, Portsmouth, Weybridge, Ivinghoe, Southend-on-Sea, Canterbury, Folkestone, Ardingly, Balcombe, Seaford, Hastings, Newhaven, Lewes, Hassocks`;
+
+        // --- EXISTING HIKING SPOTS (Data Same as Before) ---
+        const initialHikingSpots = [
+            // --- SCOTLAND ---
+            { id: 201, name: "本尼维斯山 (Ben Nevis)", region: "Scotland", routeName: "Mountain Track", location: "Fort William", coords: [56.7969, -5.0036], heat: 99, rating: 4.8, reviews: 4500, length: "17.0 km", description: "英国最高峰，苏格兰高地的象征。", difficulty: "困难 (Hard)", tags: ["最高峰", "挑战", "必去"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Ben+Nevis+Visitor+Centre" },
+            { id: 202, name: "斯托尔老人石 (Old Man of Storr)", region: "Scotland", routeName: "The Storr Circular", location: "Isle of Skye", coords: [57.5073, -6.1746], heat: 97, rating: 4.7, reviews: 3800, length: "4.5 km", description: "斯凯岛的奇特岩石景观，如同外星表面。", difficulty: "中等 (Moderate)", tags: ["奇石", "斯凯岛", "摄影"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Old+Man+of+Storr+Car+Park" },
+            { id: 203, name: "仙女池 (Fairy Pools)", region: "Scotland", routeName: "Coire na Creiche Loop", location: "Isle of Skye", coords: [57.2504, -6.2737], heat: 96, rating: 4.6, reviews: 3200, length: "3.2 km", description: "库林山脉下的蓝色水潭和瀑布。", difficulty: "容易 (Easy)", tags: ["瀑布", "野泳", "网红"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Fairy+Pools+Car+Park" },
+            { id: 204, name: "亚瑟王座 (Arthur's Seat)", region: "Scotland", routeName: "Summit from Holyrood", location: "Edinburgh", coords: [55.9444, -3.1619], heat: 94, rating: 4.7, reviews: 5100, length: "4.0 km", description: "爱丁堡市中心的死火山，俯瞰全城。", difficulty: "中等 (Moderate)", tags: ["城市全景", "火山", "日落"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Arthur's+Seat" },
+            { id: 205, name: "奎雷英山口 (The Quiraing)", region: "Scotland", routeName: "Quiraing Circuit", location: "Isle of Skye", coords: [57.6282, -6.2907], heat: 95, rating: 4.9, reviews: 2900, length: "6.8 km", description: "壮观的滑坡地貌，悬崖与尖塔。", difficulty: "困难 (Hard)", tags: ["地质奇观", "绝景", "环线"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=The+Quiraing+Car+Park" },
+            { id: 206, name: "迷失山谷 (Lost Valley)", region: "Scotland", routeName: "Coire Gabhail", location: "Glencoe", coords: [56.6678, -4.9867], heat: 92, rating: 4.8, reviews: 1200, length: "4.0 km", description: "麦克唐纳家族曾经藏匿牛群的隐秘山谷，被壮丽的三姐妹山环绕。", difficulty: "困难 (Hard)", tags: ["峡谷", "历史", "绝景"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Lost+Valley+Glencoe" },
+            { id: 207, name: "科尼克山 (Conic Hill)", region: "Scotland", routeName: "Balmaha Circular", location: "Loch Lomond", coords: [56.0860, -4.5230], heat: 88, rating: 4.7, reviews: 2100, length: "4.0 km", description: "洛蒙德湖的最佳观景点，正处于高地与低地的地质分界线上。", difficulty: "中等 (Moderate)", tags: ["湖景", "地质", "短途"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Conic+Hill+Balmaha" },
+
+            // --- WALES ---
+            { id: 301, name: "斯诺登峰 (Snowdon)", region: "Wales", routeName: "Pyg & Miners' Track", location: "Snowdonia", coords: [53.0685, -4.0763], heat: 98, rating: 4.8, reviews: 4100, length: "11.0 km", description: "威尔士最高峰，经典马蹄形路线。", difficulty: "困难 (Hard)", tags: ["最高峰", "高山湖", "经典"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Pen-y-Pass+Car+Park" },
+            { id: 302, name: "范扇峰 (Pen y Fan)", region: "Wales", routeName: "Horseshoe Ridge", location: "Brecon Beacons", coords: [51.8840, -3.4367], heat: 92, rating: 4.7, reviews: 2500, length: "15.0 km", description: "南威尔士最高峰，开阔的山脊线。", difficulty: "困难 (Hard)", tags: ["山脊", "SAS训练地", "开阔"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Storey+Arms+Outdoor+Centre" },
+            { id: 303, name: "圣大卫角 (St Davids Head)", region: "Wales", routeName: "Coastal Circular", location: "Pembrokeshire", coords: [51.9000, -5.3100], heat: 86, rating: 4.8, reviews: 850, length: "6.0 km", description: "威尔士最西端的狂野海岸，经常能看到海豹和海豚，春季有美丽的海滨花卉。", difficulty: "中等 (Moderate)", tags: ["海岸", "野生动物", "悬崖"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Whitesands+Bay+Car+Park" },
+            { id: 304, name: "特里凡峰 (Tryfan)", region: "Wales", routeName: "North Ridge Scramble", location: "Snowdonia", coords: [53.1150, -4.0230], heat: 91, rating: 4.9, reviews: 1500, length: "6.0 km", description: "英国最知名的尖峰之一，以其锯齿状的轮廓和需要手脚并用的攀爬路线而闻名。", difficulty: "极难 (Expert)", tags: ["攀岩", "挑战", "地标"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Tryfan" },
+
+            // --- LAKE DISTRICT ---
+            { id: 401, name: "斯科菲尔峰 (Scafell Pike)", region: "Lake District", routeName: "From Wasdale Head", location: "Cumbria", coords: [54.4542, -3.2116], heat: 96, rating: 4.7, reviews: 3100, length: "9.0 km", description: "英格兰最高峰，碎石坡挑战。", difficulty: "困难 (Hard)", tags: ["最高峰", "碎石坡", "湖区"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Wasdale+Head+Car+Park" },
+            { id: 402, name: "海尔维林峰 (Helvellyn)", region: "Lake District", routeName: "Via Striding Edge", location: "Glenridding", coords: [54.5270, -3.0177], heat: 95, rating: 4.9, reviews: 2800, length: "12.5 km", description: "著名的刀刃状山脊 Striding Edge。", difficulty: "极难 (Expert)", tags: ["险峻山脊", "刺激", "经典"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Glenridding+Car+Park" },
+            { id: 403, name: "卡特贝尔 (Catbells)", region: "Lake District", routeName: "Lakeland Walk", location: "Keswick", coords: [54.5680, -3.1700], heat: 91, rating: 4.8, reviews: 2200, length: "5.5 km", description: "俯瞰德文特湖的完美短途徒步。", difficulty: "中等 (Moderate)", tags: ["湖景", "家庭", "全景"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Catbells+Car+Park" },
+            { id: 404, name: "科尼斯顿老人 (Old Man of Coniston)", region: "Lake District", routeName: "Circular via Goats Water", location: "Coniston", coords: [54.3700, -3.0900], heat: 90, rating: 4.8, reviews: 2600, length: "10.5 km", description: "经典的湖区山峰，沿途经过古老的铜矿遗址和壮观的高山湖泊。", difficulty: "困难 (Hard)", tags: ["工业遗迹", "湖景", "经典"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Coniston+Old+Man" },
+            { id: 405, name: "巴特米尔环线 (Buttermere)", region: "Lake District", routeName: "Lake Circuit", location: "Buttermere", coords: [54.5400, -3.2800], heat: 89, rating: 4.9, reviews: 1800, length: "7.5 km", description: "被群山环绕的宁静湖泊，被认为是湖区最美的湖滨步道之一。", difficulty: "容易 (Easy)", tags: ["湖景", "平坦", "绝美"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Buttermere+Lake" },
+
+            // --- PEAK DISTRICT & YORKSHIRE ---
+            { id: 501, name: "马姆托尔 (Mam Tor)", region: "Peak District", routeName: "The Great Ridge", location: "Derbyshire", coords: [53.3492, -1.8096], heat: 93, rating: 4.7, reviews: 3500, length: "10.0 km", description: "大山脊行走，景色开阔。", difficulty: "中等 (Moderate)", tags: ["山脊", "日出", "峰区"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Mam+Tor+National+Trust+Car+Park" },
+            { id: 502, name: "马勒姆湾 (Malham Cove)", region: "Yorkshire", routeName: "Landscape Trail", location: "Yorkshire Dales", coords: [54.0717, -2.1587], heat: 90, rating: 4.8, reviews: 1900, length: "7.0 km", description: "哈利波特取景地，独特的石灰岩路面。", difficulty: "中等 (Moderate)", tags: ["哈利波特", "石灰岩", "瀑布"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Malham+Cove" },
+            { id: 503, name: "金德斯科特 (Kinder Scout)", region: "Peak District", routeName: "Jacob's Ladder", location: "Edale", coords: [53.3800, -1.8800], heat: 92, rating: 4.7, reviews: 3100, length: "14.0 km", description: "峰区最高点，拥有独特的高原泥炭地貌和著名的 Kinder Downfall 瀑布。", difficulty: "困难 (Hard)", tags: ["高原", "瀑布", "历史"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Edale+Car+Park" },
+            { id: 504, name: "斯坦尼奇边缘 (Stanage Edge)", region: "Peak District", routeName: "High Neb Loop", location: "Hathersage", coords: [53.3500, -1.6300], heat: 89, rating: 4.8, reviews: 2200, length: "9.0 km", description: "著名的砂岩悬崖，《傲慢与偏见》中伊丽莎白伫立的地方，攀岩者的天堂。", difficulty: "中等 (Moderate)", tags: ["悬崖", "影视取景", "攀岩"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Stanage+Edge" },
+            { id: 701, name: "英格尔伯勒 (Ingleborough)", region: "Yorkshire", routeName: "From Clapham", location: "Yorkshire Dales", coords: [54.1660, -2.3980], heat: 88, rating: 4.7, reviews: 1400, length: "16.0 km", description: "约克郡三峰之一，拥有独特的平顶轮廓和巨大的 Gaping Gill 洞穴。", difficulty: "困难 (Hard)", tags: ["三峰", "洞穴", "挑战"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Clapham+Yorkshire" },
+            
+            // --- NORTH EAST ---
+            { id: 702, name: "哈德良长城 (Hadrian's Wall)", region: "North East", routeName: "Sycamore Gap (Steel Rigg)", location: "Northumberland", coords: [55.0030, -2.3900], heat: 93, rating: 4.8, reviews: 3600, length: "6.0 km", description: "罗马帝国的边界。虽然那棵著名的树已不在，但这里的峭壁和长城遗迹依然壮观。", difficulty: "中等 (Moderate)", tags: ["历史", "世界遗产", "长城"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Steel+Rigg+Car+Park" },
+            { id: 703, name: "班伯勒城堡海岸 (Bamburgh Castle)", region: "North East", routeName: "Castle & Beach Loop", location: "Northumberland", coords: [55.6080, -1.7100], heat: 87, rating: 4.8, reviews: 2000, length: "5.0 km", description: "雄伟的城堡矗立在沙丘之上，拥有英格兰最美的海岸线之一。", difficulty: "容易 (Easy)", tags: ["城堡", "沙滩", "历史"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Bamburgh+Castle" },
+
+            // --- SOUTH WEST ---
+            { id: 601, name: "杜德尔门 (Durdle Door)", region: "South West", routeName: "Jurassic Coast", location: "Dorset", coords: [50.6211, -2.2769], heat: 94, rating: 4.7, reviews: 3300, length: "5.0 km", description: "侏罗纪海岸的天然石灰岩拱门。", difficulty: "中等 (Moderate)", tags: ["海岸拱门", "世界遗产", "沙滩"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Durdle+Door+Car+Park" },
+            { id: 602, name: "廷塔杰尔 (Tintagel)", region: "South West", routeName: "King Arthur's Coast", location: "Cornwall", coords: [50.6674, -4.7576], heat: 89, rating: 4.7, reviews: 1600, length: "6.0 km", description: "亚瑟王传说之地，悬崖城堡。", difficulty: "中等 (Moderate)", tags: ["亚瑟王", "城堡废墟", "海岸"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Tintagel+Castle" },
+            { id: 603, name: "切达峡谷 (Cheddar Gorge)", region: "South West", routeName: "Cliff Top Walk", location: "Somerset", coords: [51.2820, -2.7650], heat: 86, rating: 4.6, reviews: 2100, length: "6.5 km", description: "英国最大的峡谷，甚至有野生山羊。", difficulty: "困难 (Hard)", tags: ["峡谷", "绝景"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Cheddar+Gorge" },
+            { id: 604, name: "圣艾夫斯至塞纳 (St Ives to Zennor)", region: "South West", routeName: "South West Coast Path", location: "Cornwall", coords: [50.2100, -5.4800], heat: 90, rating: 4.8, reviews: 1200, length: "10.5 km", description: "极其崎岖但美丽的海岸线，传说中美人鱼出没的地方。通常单程步行，坐巴士返回。", difficulty: "困难 (Hard)", tags: ["海岸", "岩石", "传说"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=St+Ives+Cornwall" },
+            { id: 605, name: "岩石谷 (Valley of Rocks)", region: "South West", routeName: "Lynton Loop", location: "Exmoor", coords: [51.2300, -3.8500], heat: 85, rating: 4.8, reviews: 900, length: "5.0 km", description: "位于埃克斯穆尔国家公园边缘的独特干谷，拥有奇异的岩石构造和野生山羊群。", difficulty: "容易/中等", tags: ["地质", "山羊", "海岸"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Valley+of+Rocks" },
+
+            // --- LONDON AREA (Previous) ---
+            { id: 1, name: "七姐妹岩 (Seven Sisters)", region: "London Area", routeName: "Seaford to Eastbourne", location: "East Sussex", coords: [50.7600, 0.1600], heat: 98, rating: 4.9, reviews: 2150, length: "21.8 km", description: "经典的白垩悬崖海岸线。", difficulty: "困难 (Hard)", tags: ["海景", "悬崖", "必去"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Seven+Sisters+Cliffs" },
+            { id: 2, name: "博克斯山 (Box Hill)", region: "London Area", routeName: "Circular Hike", location: "Surrey", coords: [51.2492, -0.3151], heat: 92, rating: 4.6, reviews: 1596, length: "12.8 km", description: "萨里山地标，著名挑战。", difficulty: "中等 (Moderate)", tags: ["全景", "挑战", "经典"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Box+Hill+Surrey" },
+            { id: 3, name: "埃平森林 (Epping Forest)", region: "London Area", routeName: "Oak Trail", location: "Greater London", coords: [51.6715, 0.1014], heat: 85, rating: 4.6, reviews: 557, length: "10.2 km", description: "古老皇家林地，地铁直达。", difficulty: "中等 (Moderate)", tags: ["森林", "古迹", "地铁直达"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Epping+Forest+Oak+Trail" },
+            { id: 4, name: "汉普斯特德荒野 (Hampstead Heath)", region: "London Area", routeName: "Parliament Hill", location: "London", coords: [51.5600, -0.1600], heat: 95, rating: 4.7, reviews: 890, length: "6.5 km", description: "城市绿肺，最佳天际线景观。", difficulty: "容易 (Easy)", tags: ["城市景观", "公园", "休闲"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Parliament+Hill+Viewpoint" },
+            { id: 5, name: "多佛白崖 (White Cliffs of Dover)", region: "London Area", routeName: "Visitor Centre", location: "Kent", coords: [51.1316, 1.3372], heat: 88, rating: 4.7, reviews: 1200, length: "6.0 km", description: "英国象征，远眺法国。", difficulty: "容易 (Easy)", tags: ["历史", "海峡景观", "地标"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=White+Cliffs+of+Dover+Visitor+Centre" },
+            { id: 6, name: "里士满公园 (Richmond Park)", region: "London Area", routeName: "Tamsin Trail", location: "London", coords: [51.4333, -0.2780], heat: 89, rating: 4.8, reviews: 1100, length: "11.8 km", description: "皇家公园，野生鹿群。", difficulty: "容易/中等", tags: ["野生动物", "环线", "骑行"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Richmond+Park+Isabella+Plantation" },
+            { id: 7, name: "阿什里奇庄园 (Ashridge Estate)", region: "London Area", routeName: "Ivinghoe Beacon", location: "Hertfordshire", coords: [51.7980, -0.5600], heat: 78, rating: 4.8, reviews: 891, length: "14.1 km", description: "蓝铃花海，哈利波特取景。", difficulty: "中等 (Moderate)", tags: ["蓝铃花", "电影取景", "林地"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Ashridge+Estate+Visitor+Centre" },
+            { id: 8, name: "切斯谷步道 (Chess Valley)", region: "London Area", routeName: "Rickmansworth to Chesham", location: "Chilterns", coords: [51.7040, -0.6122], heat: 75, rating: 4.5, reviews: 420, length: "16.0 km", description: "沿河而行，经典英式乡村。", difficulty: "中等 (Moderate)", tags: ["河流", "田园", "地铁直达"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Chess+Valley+Walk+Rickmansworth" },
+            { id: 9, name: "魔鬼堤 (Devil's Dyke)", region: "London Area", routeName: "Newtimber Hill", location: "Sussex", coords: [50.8850, -0.2050], heat: 82, rating: 4.7, reviews: 630, length: "8.5 km", description: "巨大的干谷，南唐斯风光。", difficulty: "中等 (Moderate)", tags: ["山谷", "视野", "日落"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Devil's+Dyke+Brighton" },
+            { id: 10, name: "利斯山 (Leith Hill)", region: "London Area", routeName: "From Friday Street", location: "Surrey", coords: [51.1760, -0.3720], heat: 70, rating: 4.7, reviews: 450, length: "10.0 km", description: "英格兰东南部最高点。", difficulty: "困难 (Hard)", tags: ["最高点", "塔楼", "森林"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Leith+Hill+Tower" },
+            { id: 11, name: "戈林峡 (Goring Gap)", region: "London Area", routeName: "Thames Path", location: "Oxfordshire", coords: [51.5210, -1.1370], heat: 65, rating: 4.6, reviews: 320, length: "8.0 km", description: "泰晤士河最壮丽一段。", difficulty: "容易/中等", tags: ["泰晤士河", "河畔", "村庄"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Goring+and+Streatley" },
+            { id: 12, name: "黑斯廷斯郊野公园 (Hastings)", region: "London Area", routeName: "Firehills & Cliffs", location: "East Sussex", coords: [50.8732, 0.6433], heat: 60, rating: 4.6, reviews: 210, length: "6.5 km", description: "原始狂野的砂岩悬崖。", difficulty: "中等 (Moderate)", tags: ["悬崖", "原始", "海景"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Hastings+Country+Park" },
+            { id: 13, name: "艾文霍灯塔 (Ivinghoe Beacon)", region: "London Area", routeName: "Ridgeway Start", location: "Buckinghamshire", coords: [51.8360, -0.6298], heat: 72, rating: 4.7, reviews: 410, length: "12.8 km", description: "奇尔特恩制高点，视野开阔。", difficulty: "中等 (Moderate)", tags: ["山脊", "视野", "历史步道"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Ivinghoe+Beacon+Buckinghamshire" },
+            { id: 14, name: "温布尔登公地 (Wimbledon)", region: "London Area", routeName: "Windmill Walk", location: "London", coords: [51.4376, -0.2320], heat: 76, rating: 4.5, reviews: 580, length: "7.0 km", description: "风车与荒原，城市逃离。", difficulty: "容易 (Easy)", tags: ["风车", "荒地", "城市逃离"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Wimbledon+Common+Windmill" },
+            { id: 15, name: "恩斯福德城堡 (Eynsford)", region: "London Area", routeName: "Darent Valley", location: "Kent", coords: [51.3706, 0.2149], heat: 68, rating: 4.5, reviews: 290, length: "9.5 km", description: "城堡废墟与河流。", difficulty: "容易 (Easy)", tags: ["废墟", "历史", "乡村"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Eynsford+Castle+Kent" },
+            { id: 16, name: "莱伊港 (Rye Harbour)", region: "London Area", routeName: "Nature Reserve", location: "East Sussex", coords: [50.9367, 0.7635], heat: 64, rating: 4.6, reviews: 350, length: "8.0 km", description: "盐沼与观鸟天堂。", difficulty: "容易 (Easy)", tags: ["观鸟", "湿地", "海岸"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Rye+Harbour+Nature+Reserve" },
+            { id: 17, name: "马洛 (Marlow)", region: "London Area", routeName: "Thames Path", location: "Buckinghamshire", coords: [51.5685, -0.7763], heat: 74, rating: 4.7, reviews: 600, length: "9.0 km", description: "典型的英式河畔风光。", difficulty: "容易 (Easy)", tags: ["河畔", "美食", "平坦"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Marlow+Thames+Path" },
+            { id: 19, name: "弗吉尼亚水湖 (Virginia Water)", region: "London Area", routeName: "Lake Circuit", location: "Surrey", coords: [51.4111, -0.6028], heat: 80, rating: 4.8, reviews: 1300, length: "7.2 km", description: "皇家公园，罗马遗迹。", difficulty: "容易 (Easy)", tags: ["湖泊", "家庭", "遗迹"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Virginia+Water+Lake+Car+Park" },
+            { id: 23, name: "布罗克斯本森林 (Broxbourne)", region: "London Area", routeName: "Nature Reserve", location: "Hertfordshire", coords: [51.7450, -0.0550], heat: 66, rating: 4.7, reviews: 180, length: "17.5 km", description: "古老无梗花栎林。", difficulty: "中等 (Moderate)", tags: ["古老森林", "自然保护区", "幽静"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Broxbourne+Woods" },
+            { id: 25, name: "魔鬼大潘趣碗 (Devil's Punch Bowl)", region: "London Area", routeName: "Gibbet Hill", location: "Surrey", coords: [51.1144, -0.7294], heat: 94, rating: 4.8, reviews: 1450, length: "10.2 km", description: "天然剧场状干谷，景色壮观。", difficulty: "中等 (Moderate)", tags: ["天然剧场", "希瑟花", "视野"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Devil's+Punch+Bowl+Hindhead" },
+            { id: 26, name: "诺尔公园 (Knole Park)", region: "London Area", routeName: "Deer Park Loop", location: "Kent", coords: [51.2668, 0.2036], heat: 87, rating: 4.7, reviews: 890, length: "7.5 km", description: "中世纪鹿苑与豪宅。", difficulty: "容易 (Easy)", tags: ["野生鹿群", "庄园", "家庭"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Knole+Park+Sevenoaks" },
+            { id: 27, name: "库姆山 (Coombe Hill)", region: "London Area", routeName: "Chequers Court", location: "Buckinghamshire", coords: [51.7610, -0.7700], heat: 81, rating: 4.6, reviews: 430, length: "11.2 km", description: "俯瞰首相官邸 Chequers。", difficulty: "中等 (Moderate)", tags: ["首相官邸", "最高点", "纪念碑"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Coombe+Hill+Buckinghamshire" },
+            { id: 28, name: "阿什当森林 (Ashdown Forest)", region: "London Area", routeName: "Pooh Sticks Bridge", location: "East Sussex", coords: [51.0760, 0.1080], heat: 88, rating: 4.7, reviews: 1250, length: "5.0 km", description: "小熊维尼的百亩森林。", difficulty: "容易 (Easy)", tags: ["小熊维尼", "亲子", "森林"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Pooh+Sticks+Bridge" },
+            { id: 29, name: "圣玛莎山 (St Martha's Hill)", region: "London Area", routeName: "Newlands Corner", location: "Surrey", coords: [51.2248, -0.5294], heat: 84, rating: 4.9, reviews: 680, length: "11.0 km", description: "山顶孤立教堂，沙质土壤。", difficulty: "中等 (Moderate)", tags: ["山顶教堂", "沙地", "全景"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=St+Martha's+Hill+Guildford" },
+            { id: 30, name: "帕克兰步道 (Parkland Walk)", region: "London Area", routeName: "Finsbury to Ally Pally", location: "London", coords: [51.5744, -0.1100], heat: 91, rating: 4.5, reviews: 2100, length: "7.2 km", description: "废弃铁路线改建的绿道。", difficulty: "容易 (Easy)", tags: ["废弃铁路", "涂鸦", "城市绿廊"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Parkland+Walk+London" },
+            { id: 31, name: "邓斯特布尔唐斯 (Dunstable Downs)", region: "London Area", routeName: "Whipsnade Circular", location: "Bedfordshire", coords: [51.8650, -0.5450], heat: 79, rating: 4.7, reviews: 540, length: "7.2 km", description: "滑翔翼胜地，白垩草地。", difficulty: "中等 (Moderate)", tags: ["滑翔翼", "开阔视野", "白垩草地"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Dunstable+Downs" },
+            { id: 32, name: "京都花园与荷兰公园 (Kyoto Garden)", region: "London Area", routeName: "Holland Park Loop", location: "London (Kensington)", coords: [51.5034, -0.2033], heat: 93, rating: 4.8, reviews: 3200, length: "3.2 km", description: "伦敦市中心的隐秘宝石。拥有令人惊叹的日式京都花园和小型瀑布。", difficulty: "容易 (Easy)", tags: ["瀑布", "日式庭院", "城市绿洲"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Kyoto+Garden+London" },
+            { id: 33, name: "摩尔峡谷步道 (Mole Gap Trail)", region: "London Area", routeName: "Leatherhead to Dorking", location: "Surrey", coords: [51.2950, -0.3290], heat: 74, rating: 4.6, reviews: 480, length: "10.0 km", description: "这条路线穿越英格兰最大的葡萄园 Denbies Wine Estate。", difficulty: "中等 (Moderate)", tags: ["葡萄园", "河流", "火车站直达"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Denbies+Wine+Estate" },
+            { id: 34, name: "卡西奥伯里公园 (Cassiobury Park)", region: "London Area", routeName: "Grand Union Canal & Waterfall", location: "Watford", coords: [51.6570, -0.4350], heat: 72, rating: 4.5, reviews: 650, length: "5.5 km", description: "非常适合家庭的公园。沿着大联合运河 (Grand Union Canal) 漫步。", difficulty: "容易 (Easy)", tags: ["运河", "家庭", "野餐"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Cassiobury+Park" },
+            { id: 35, name: "赫弗城堡 (Hever Castle)", region: "London Area", routeName: "Eden Valley Walk", location: "Kent", coords: [51.1880, 0.1130], heat: 76, rating: 4.7, reviews: 520, length: "9.5 km", description: "安妮·博林的童年故居。这条路线穿过伊甸谷 (Eden Valley)。", difficulty: "容易/中等 (Easy/Mod)", tags: ["城堡", "历史", "乡村"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Hever+Castle" },
+            { id: 36, name: "阿宾杰粗林 (Abinger Roughs)", region: "London Area", routeName: "Bluebells & Witches Broom", location: "Surrey", coords: [51.2180, -0.4220], heat: 69, rating: 4.6, reviews: 310, length: "6.0 km", description: "以古老的橡树和“女巫扫帚”松树而闻名。达尔文曾在这里散步。", difficulty: "容易 (Easy)", tags: ["蓝铃花", "古树", "名人足迹"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Abinger+Roughs" },
+            { id: 37, name: "吉尔福德城堡 (Guildford Castle)", region: "London Area", routeName: "River Wey & St Catherine's Hill", location: "Surrey", coords: [51.2360, -0.5730], heat: 80, rating: 4.6, reviews: 740, length: "8.5 km", description: "从市中心的城堡出发，沿着韦河 (River Wey) 漫步。", difficulty: "容易 (Easy)", tags: ["河畔", "废墟", "城市漫步"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Guildford+Castle" },
+            { id: 38, name: "温多弗森林 (Wendover Woods)", region: "London Area", routeName: "Firecrest Trail & Highest Point", location: "Buckinghamshire", coords: [51.7480, -0.7200], heat: 77, rating: 4.7, reviews: 920, length: "7.0 km", description: "奇尔特恩丘陵的最高点。这里有适合儿童的 Gruffalo 小径。", difficulty: "中等 (Moderate)", tags: ["森林", "亲子", "最高点"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Wendover+Woods" },
+            { id: 39, name: "百老汇塔 (Broadway Tower)", region: "Cotswolds", routeName: "Broadway Circular", location: "Worcestershire", coords: [52.0247, -1.8363], heat: 94, rating: 4.8, reviews: 3200, length: "7.5 km", description: "科茨沃尔德的童话塔楼。", difficulty: "中等 (Moderate)", tags: ["塔楼", "绝景", "科茨沃尔德"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Broadway+Tower+Worcestershire" },
+            { id: 40, name: "水上伯顿 (Bourton-on-the-Water)", region: "Cotswolds", routeName: "Lower Slaughter", location: "Gloucestershire", coords: [51.8860, -1.7600], heat: 96, rating: 4.7, reviews: 2800, length: "5.5 km", description: "科茨沃尔德的威尼斯。", difficulty: "容易 (Easy)", tags: ["古村落", "河流", "明信片风光"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Bourton-on-the-Water" },
+            { id: 41, name: "新森林高树径 (New Forest Tall Trees)", region: "South West", routeName: "Blackwater Arboretum", location: "Hampshire", coords: [50.8500, -1.6300], heat: 89, rating: 4.8, reviews: 1100, length: "4.5 km", description: "巨大的红杉林，童话世界。", difficulty: "容易 (Easy)", tags: ["巨树", "红杉", "国家公园"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Blackwater+Arboretum" },
+            { id: 42, name: "邓里奇荒原 (Dunwich Heath)", region: "East England", routeName: "Pink Heather Trail", location: "Suffolk", coords: [52.2450, 1.6280], heat: 85, rating: 4.7, reviews: 950, length: "6.5 km", description: "海边的紫色石楠花海。", difficulty: "容易 (Easy)", tags: ["紫色花海", "海岸", "宁静"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Dunwich+Heath" },
+            { id: 43, name: "维京海岸线 (Ramsgate to Margate)", region: "London Area", routeName: "Viking Trail", location: "Kent", coords: [51.3340, 1.4180], heat: 82, rating: 4.5, reviews: 1400, length: "12.0 km", description: "海滨小镇与白垩悬崖。", difficulty: "容易 (Easy)", tags: ["沙滩", "海岸城镇", "历史"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Viking+Coastal+Trail" },
+            { id: 44, name: "雷盖特山 (Reigate Hill)", region: "London Area", routeName: "Gatton Park & Inglis Folly", location: "Surrey", coords: [51.2560, -0.1900], heat: 83, rating: 4.6, reviews: 820, length: "7.0 km", description: "北唐斯步道上的精华段。拥有俯瞰萨里郡南部的开阔视野。", difficulty: "中等 (Moderate)", tags: ["视野", "堡垒", "北唐斯"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Reigate+Hill+Car+Park" },
+            { id: 45, name: "克利夫山 (Cleeve Hill)", region: "Cotswolds", routeName: "Cotswold Way Highest Point", location: "Gloucestershire", coords: [51.9300, -2.0000], heat: 84, rating: 4.7, reviews: 670, length: "9.5 km", description: "科茨沃尔德的最高点 (330m)。", difficulty: "中等 (Moderate)", tags: ["最高点", "荒原", "全景"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Cleeve+Hill" },
+            { id: 46, name: "博尔德伍德鹿苑 (Bolderwood)", region: "South West", routeName: "Deer Watch Trail", location: "Hampshire", coords: [50.8760, -1.6570], heat: 87, rating: 4.8, reviews: 1350, length: "3.0 km", description: "新森林最佳观鹿点。", difficulty: "容易 (Easy)", tags: ["观鹿", "野生动物", "家庭"], googleMapLink: "https://www.google.com/maps/search/?api=1&query=Bolderwood+Deer+Sanctuary" }
+        ];
+
+        // Component: MapIcon
         const Icon = ({ name, size = 20, className = "", onClick }) => {
             useEffect(() => {
                 lucide.createIcons();
@@ -618,136 +264,64 @@
             const stars = [];
             for (let i = 1; i <= 5; i++) {
                 if (i <= Math.round(rating)) {
-                    stars.push(<Icon key={i} name="star" size={12} className="fill-yellow-400 text-yellow-400" />);
+                    stars.push(<Icon key={i} name="star" size={14} className="star-filled" />);
                 } else {
-                    stars.push(<Icon key={i} name="star" size={12} className="text-gray-300" />);
+                    stars.push(<Icon key={i} name="star" size={14} className="star-empty" />);
                 }
             }
             return <div className="flex gap-0.5">{stars}</div>;
         };
 
-        // Mock Data for "Simulate" (Enhanced based on search)
-        const MOCK_IMPORTED_DATA = [
-            {
-                id: 101,
-                name: "梅菲尔德薰衣草农场 (Mayfield Lavender Farm)",
-                routeName: "Circular Farm Walk",
-                location: "Surrey",
-                coords: [51.3283, -0.1633],
-                heat: 90,
-                rating: 4.6,
-                reviews: 3200,
-                length: "3.5 km",
-                description: "【模拟导入】夏季必去的紫色花海。虽然路线较短，但非常适合摄影和休闲散步。农场商店的薰衣草冰淇淋很有名。",
-                difficulty: "容易 (Easy)",
-                tags: ["薰衣草", "摄影", "家庭"],
-                googleMapLink: "https://www.google.com/maps/search/?api=1&query=Mayfield+Lavender+Farm"
-            },
-            {
-                id: 102,
-                name: "佩恩希尔公园 (Painshill Park)",
-                routeName: "Crystal Grotto Route",
-                location: "Surrey (Cobham)",
-                coords: [51.3300, -0.4500],
-                heat: 83,
-                rating: 4.7,
-                reviews: 1800,
-                length: "5.0 km",
-                description: "【模拟导入】18世纪的园林杰作。拥有著名的人造水晶岩洞、哥特式塔楼和蜿蜒的湖泊。美剧《布里杰顿家族》的取景地之一。",
-                difficulty: "容易 (Easy)",
-                tags: ["园林", "岩洞", "影视取景"],
-                googleMapLink: "https://www.google.com/maps/search/?api=1&query=Painshill+Park"
-            },
-            {
-                id: 103,
-                name: "温克沃斯植物园 (Winkworth Arboretum)",
-                routeName: "Autumn Colour Trail",
-                location: "Surrey (Godalming)",
-                coords: [51.1700, -0.5800],
-                heat: 88,
-                rating: 4.8,
-                reviews: 1500,
-                length: "4.0 km",
-                description: "【模拟导入】National Trust 所有的植物园。秋季色彩极其丰富，湖畔船屋景色如画。这里有从世界各地收集的树木。",
-                difficulty: "容易/中等 (Easy/Mod)",
-                tags: ["秋色", "植物园", "湖泊"],
-                googleMapLink: "https://www.google.com/maps/search/?api=1&query=Winkworth+Arboretum"
-            },
-            {
-                id: 104,
-                name: "埃米茨花园 (Emmetts Garden)",
-                routeName: "Highest Point in Kent Walk",
-                location: "Kent (Sevenoaks)",
-                coords: [51.2500, 0.1000],
-                heat: 79,
-                rating: 4.6,
-                reviews: 600,
-                length: "6.0 km",
-                description: "【模拟导入】肯特郡海拔最高点之一。花园本身小巧精致，但拥有壮丽的韦尔德 (The Weald) 景观。非常适合野餐。",
-                difficulty: "容易 (Easy)",
-                tags: ["花园", "高点", "视野"],
-                googleMapLink: "https://www.google.com/maps/search/?api=1&query=Emmetts+Garden"
-            }
-        ];
-
         const App = () => {
             const mapRef = useRef(null);
             const mapInstanceRef = useRef(null);
+            const canvasRef = useRef(null);
             const markersRef = useRef([]);
-            const circlesRef = useRef([]);
             
             const [hikingSpots, setHikingSpots] = useState(initialHikingSpots);
             const [selectedSpot, setSelectedSpot] = useState(null);
-            const [heatMode, setHeatMode] = useState(false);
+            const [fogMode, setFogMode] = useState(false); // Default to Fog Mode OFF
             const [sidebarOpen, setSidebarOpen] = useState(true);
             const [sortBy, setSortBy] = useState('heat');
-            
-            // New State for Features
+            const [regionFilter, setRegionFilter] = useState("All");
+            const regions = ["All", "London Area", "Scotland", "Wales", "Lake District", "Peak District", "South West", "Cotswolds", "Yorkshire", "East England", "North East"];
+
+            // Visited Spots logic
             const [visitedSpots, setVisitedSpots] = useState(new Set());
-            const [showImportModal, setShowImportModal] = useState(false);
-            const [importTab, setImportTab] = useState("simulate"); // 'simulate' or 'json'
-            const [importUrl, setImportUrl] = useState("");
-            const [jsonInput, setJsonInput] = useState("");
-            const [importStatus, setImportStatus] = useState(""); // idle, loading, success, error
 
-            // Load persisted data on mount
+            // --- INITIALIZATION LOGIC (Auto-match User History) ---
             useEffect(() => {
-                const savedVisited = localStorage.getItem('london_hikes_visited');
+                const visitedSet = new Set();
+                
+                // 1. Process Hiking Spots Match
+                initialHikingSpots.forEach(spot => {
+                    const isMatch = USER_RAW_LIST.toLowerCase().includes(spot.name.split(' (')[0].toLowerCase()) || 
+                                    USER_RAW_LIST.toLowerCase().includes(spot.location.toLowerCase());
+                    if (isMatch) visitedSet.add(spot.id);
+                });
+
+                // Load from local storage to merge with hardcoded list
+                const savedVisited = localStorage.getItem('uk_hikes_visited');
                 if (savedVisited) {
-                    setVisitedSpots(new Set(JSON.parse(savedVisited)));
+                    const savedIds = JSON.parse(savedVisited);
+                    savedIds.forEach(id => visitedSet.add(id));
                 }
 
-                const savedCustomSpots = localStorage.getItem('london_hikes_custom_spots');
-                if (savedCustomSpots) {
-                    const customSpots = JSON.parse(savedCustomSpots);
-                    // Filter out duplicates if any
-                    const uniqueCustomSpots = customSpots.filter(cs => !initialHikingSpots.some(is => is.id === cs.id));
-                    setHikingSpots(prev => [...prev, ...uniqueCustomSpots]);
-                }
+                setVisitedSpots(visitedSet);
             }, []);
 
-            // Save visited spots when changed
             useEffect(() => {
-                localStorage.setItem('london_hikes_visited', JSON.stringify([...visitedSpots]));
+                localStorage.setItem('uk_hikes_visited', JSON.stringify([...visitedSpots]));
             }, [visitedSpots]);
 
-            // Save custom spots (if any new ones added)
-            useEffect(() => {
-                const customSpots = hikingSpots.filter(s => s.id > 100); // Assuming >100 are imported
-                if (customSpots.length > 0) {
-                    localStorage.setItem('london_hikes_custom_spots', JSON.stringify(customSpots));
-                }
-            }, [hikingSpots]);
-
-            // Initialize Map
+            // Map Init
             useEffect(() => {
                 if (!mapInstanceRef.current) {
-                    const map = L.map(mapRef.current, {
-                        zoomControl: false 
-                    }).setView([51.4, -0.1], 9); 
+                    const map = L.map(mapRef.current, { zoomControl: false }).setView([54.5, -2], 6); 
 
+                    // Restore to Voyager (Light, nice detail)
                     L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+                        attribution: '&copy; OpenStreetMap &copy; CARTO',
                         subdomains: 'abcd',
                         maxZoom: 19
                     }).addTo(map);
@@ -757,70 +331,188 @@
                 }
             }, []);
 
-            // Update Markers/Heatmap
+            // --- FOG LAYER (CANVAS IMPLEMENTATION) ---
+            // Re-creating the "Pre-render" optimization for smooth performance
+            const gradientCanvas = useMemo(() => {
+                const c = document.createElement('canvas');
+                c.width = 120; // 2 * radius (60)
+                c.height = 120;
+                const ctx = c.getContext('2d');
+                if(ctx) {
+                    const grd = ctx.createRadialGradient(60, 60, 12, 60, 60, 60);
+                    grd.addColorStop(0, 'rgba(0,0,0,1)'); // Core clear
+                    grd.addColorStop(1, 'rgba(0,0,0,0)'); // Edge fade
+                    ctx.fillStyle = grd;
+                    ctx.fillRect(0,0,120,120);
+                }
+                return c;
+            }, []);
+
+            const drawFog = () => {
+                const map = mapInstanceRef.current;
+                const canvas = canvasRef.current;
+                if (!map || !canvas) return;
+
+                if (!fogMode) {
+                    // Just clear it if fog is off
+                    const ctx = canvas.getContext('2d');
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    return;
+                }
+
+                const ctx = canvas.getContext('2d');
+                const size = map.getSize();
+                const dpr = window.devicePixelRatio || 1;
+
+                // Resize logic
+                if (canvas.width !== size.x * dpr || canvas.height !== size.y * dpr) {
+                    canvas.width = size.x * dpr;
+                    canvas.height = size.y * dpr;
+                    ctx.scale(dpr, dpr);
+                    canvas.style.width = `${size.x}px`;
+                    canvas.style.height = `${size.y}px`;
+                }
+
+                // 1. Fill Dark Fog
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.clearRect(0, 0, size.x, size.y);
+                ctx.fillStyle = 'rgba(20, 25, 35, 0.85)'; // Deep dark blue-grey fog
+                ctx.fillRect(0, 0, size.x, size.y);
+
+                // 2. Erase Holes using Sprite (Fast)
+                ctx.globalCompositeOperation = 'destination-out';
+
+                const drawHole = (lat, lng) => {
+                    const point = map.latLngToContainerPoint([lat, lng]);
+                    // Draw pre-rendered gradient centered at point
+                    ctx.drawImage(gradientCanvas, point.x - 60, point.y - 60);
+                };
+
+                // Holes for Hiking Spots
+                hikingSpots.forEach(spot => {
+                    if (visitedSpots.has(spot.id)) {
+                        drawHole(spot.coords[0], spot.coords[1]);
+                    }
+                });
+
+                // Holes for Raw History
+                USER_HISTORY_LOCATIONS.forEach(loc => {
+                    drawHole(loc.coords[0], loc.coords[1]);
+                });
+
+                ctx.globalCompositeOperation = 'source-over';
+            };
+
+            // Animation Loop
             useEffect(() => {
                 const map = mapInstanceRef.current;
                 if (!map) return;
 
-                // Clear existing
-                markersRef.current.forEach(m => m.remove());
-                circlesRef.current.forEach(c => c.remove());
-                markersRef.current = [];
-                circlesRef.current = [];
+                let animationFrameId;
 
-                hikingSpots.forEach(spot => {
-                    const isVisited = visitedSpots.has(spot.id);
+                const renderLoop = () => {
+                    drawFog();
+                };
 
-                    if (heatMode) {
-                        const color = spot.heat > 90 ? '#ef4444' : (spot.heat > 75 ? '#f97316' : '#eab308');
-                        const radius = spot.heat * 30;
+                const onMapUpdate = () => {
+                    if(animationFrameId) cancelAnimationFrame(animationFrameId);
+                    animationFrameId = requestAnimationFrame(renderLoop);
+                };
 
-                        const circle = L.circle(spot.coords, {
-                            color: isVisited ? '#6b7280' : color, // Grey if visited
-                            fillColor: isVisited ? '#6b7280' : color,
-                            fillOpacity: 0.6,
-                            radius: radius,
-                            weight: 1
-                        }).addTo(map);
-
-                        circle.on('click', () => {
-                             setSelectedSpot(spot);
-                             setSidebarOpen(true);
-                        });
-                        circlesRef.current.push(circle);
-
-                    } else {
-                        // Marker Logic
-                        let markerColor = spot.heat > 90 ? '#ef4444' : (spot.heat > 75 ? '#f97316' : '#10b981');
-                        if (isVisited) markerColor = '#6b7280'; // Grey for visited
-                        
-                        const customIcon = L.divIcon({
-                            className: 'custom-div-icon',
-                            html: `<div style="background-color: ${markerColor}; width: 14px; height: 14px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center;">${isVisited ? '<div style="width:6px; height:6px; background:white; border-radius:50%"></div>' : ''}</div>`,
-                            iconSize: [14, 14],
-                            iconAnchor: [7, 7]
-                        });
-
-                        const marker = L.marker(spot.coords, { icon: customIcon }).addTo(map);
-                        
-                        marker.on('click', () => {
-                            setSelectedSpot(spot);
-                            setSidebarOpen(true);
-                             map.flyTo(spot.coords, 11, { duration: 1.5 });
-                        });
-
-                        marker.bindTooltip(`<b>${spot.name}</b><br>${isVisited ? '✅ 已打卡' : `⭐ ${spot.rating}`}`, {
-                            permanent: false,
-                            direction: 'top',
-                            offset: [0, -10],
-                            className: 'bg-white px-2 py-1 rounded shadow text-sm'
-                        });
-
-                        markersRef.current.push(marker);
+                if (fogMode) {
+                    map.on('move', onMapUpdate);
+                    map.on('zoom', onMapUpdate);
+                    map.on('resize', onMapUpdate);
+                    renderLoop(); // Initial
+                } else {
+                    const canvas = canvasRef.current;
+                    if (canvas) {
+                        const ctx = canvas.getContext('2d');
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
                     }
+                    map.off('move', onMapUpdate);
+                    map.off('zoom', onMapUpdate);
+                    map.off('resize', onMapUpdate);
+                }
+
+                return () => {
+                    if(animationFrameId) cancelAnimationFrame(animationFrameId);
+                    map.off('move', onMapUpdate);
+                    map.off('zoom', onMapUpdate);
+                    map.off('resize', onMapUpdate);
+                };
+            }, [fogMode, visitedSpots, hikingSpots, gradientCanvas]);
+
+
+            // --- MARKERS LOGIC ---
+            useEffect(() => {
+                const map = mapInstanceRef.current;
+                if (!map) return;
+
+                markersRef.current.forEach(m => m.remove());
+                markersRef.current = [];
+
+                // 1. Render User History Markers (Bottom Layer)
+                USER_HISTORY_LOCATIONS.forEach(loc => {
+                    const customIcon = L.divIcon({
+                        className: 'custom-div-icon',
+                        html: `<div style="background-color: #9ca3af; width: 8px; height: 8px; border-radius: 50%; border: 1px solid white; box-shadow: 0 1px 2px rgba(0,0,0,0.2);"></div>`,
+                        iconSize: [8, 8],
+                        iconAnchor: [4, 4]
+                    });
+
+                    const marker = L.marker(loc.coords, { 
+                        icon: customIcon, 
+                        zIndexOffset: 100, // Bottom layer
+                    }).addTo(map);
+                    
+                    marker.bindTooltip(loc.name, {
+                        direction: 'top',
+                        offset: [0, -5],
+                        className: 'bg-white px-2 py-1 rounded-lg shadow-sm text-xs text-gray-600 font-medium border border-gray-100'
+                    });
+
+                    markersRef.current.push(marker);
                 });
 
-            }, [heatMode, hikingSpots, visitedSpots]);
+                // 2. Render Hiking Spots (Top Layer)
+                const filteredSpots = regionFilter === "All" 
+                    ? hikingSpots 
+                    : hikingSpots.filter(s => s.region === regionFilter);
+
+                filteredSpots.forEach(spot => {
+                    const isVisited = visitedSpots.has(spot.id);
+
+                    // Marker Styling
+                    let markerColor = isVisited ? '#10b981' : '#3b82f6';
+                    let markerOpacity = 1; 
+                    
+                    const customIcon = L.divIcon({
+                        className: 'custom-div-icon',
+                        html: `<div style="background-color: ${markerColor}; width: 14px; height: 14px; border-radius: 50%; border: 3px solid white; box-shadow: 0 4px 6px rgba(0,0,0,0.15);"></div>`,
+                        iconSize: [14, 14],
+                        iconAnchor: [7, 7]
+                    });
+
+                    const marker = L.marker(spot.coords, { icon: customIcon, opacity: markerOpacity, zIndexOffset: isVisited ? 1000 : 2000 }).addTo(map);
+                    
+                    marker.on('click', () => {
+                        setSelectedSpot(spot);
+                        setSidebarOpen(true);
+                         map.flyTo(spot.coords, 11, { duration: 1.5 });
+                    });
+
+                    marker.bindTooltip(`<b class="font-sans text-sm">${spot.name}</b>`, {
+                        permanent: false,
+                        direction: 'top',
+                        offset: [0, -10],
+                        className: 'bg-white px-3 py-1.5 rounded-xl shadow-lg text-gray-800 font-medium border border-gray-100 transform translate-y-1'
+                    });
+
+                    markersRef.current.push(marker);
+                });
+
+            }, [fogMode, hikingSpots, visitedSpots, regionFilter]);
 
             const handleCardClick = (spot) => {
                 setSelectedSpot(spot);
@@ -832,345 +524,194 @@
             const toggleVisited = (e, id) => {
                 e.stopPropagation();
                 const newVisited = new Set(visitedSpots);
-                if (newVisited.has(id)) {
-                    newVisited.delete(id);
-                } else {
-                    newVisited.add(id);
-                }
+                if (newVisited.has(id)) newVisited.delete(id);
+                else newVisited.add(id);
                 setVisitedSpots(newVisited);
             };
 
-            const handleSimulationImport = () => {
-                setImportStatus("loading");
-                setTimeout(() => {
-                    const newSpots = MOCK_IMPORTED_DATA.filter(mock => !hikingSpots.some(s => s.name === mock.name));
-                    
-                    if (newSpots.length > 0) {
-                        setHikingSpots(prev => [...prev, ...newSpots]);
-                        setImportStatus("success");
-                        if(mapInstanceRef.current) mapInstanceRef.current.setView(newSpots[0].coords, 10);
-                        setTimeout(() => {
-                             setShowImportModal(false);
-                             setImportStatus("");
-                             alert(`成功模拟导入 ${newSpots.length} 个新地点！`);
-                        }, 500);
-                    } else {
-                         setImportStatus("error");
-                         setTimeout(() => setImportStatus(""), 2000);
-                    }
-                }, 1000);
-            };
-
-            const handleJsonImport = () => {
-                try {
-                    const parsedData = JSON.parse(jsonInput);
-                    if (Array.isArray(parsedData)) {
-                        // Basic validation
-                        const validData = parsedData.filter(item => item.name && item.coords && Array.isArray(item.coords));
-                        
-                        // Deduplicate based on name
-                        const newSpots = validData.filter(d => !hikingSpots.some(s => s.name === d.name));
-                        
-                        // Re-ID
-                        const startId = Math.max(...hikingSpots.map(s => s.id)) + 1;
-                        const dataWithIds = newSpots.map((item, index) => ({...item, id: startId + index}));
-
-                        if (dataWithIds.length > 0) {
-                            setHikingSpots(prev => [...prev, ...dataWithIds]);
-                            setShowImportModal(false);
-                            setJsonInput("");
-                            alert(`成功导入 ${dataWithIds.length} 个地点！`);
-                            if(mapInstanceRef.current) mapInstanceRef.current.setView(dataWithIds[0].coords, 10);
-                        } else {
-                            alert("没有发现新地点或数据重复。");
-                        }
-                    } else {
-                        alert("无效的 JSON 格式：必须是数组。");
-                    }
-                } catch (e) {
-                    alert("JSON 解析失败，请检查格式。");
-                }
-            };
-
-            // Sorting Logic
             const sortedSpots = useMemo(() => {
-                return [...hikingSpots].sort((a, b) => {
+                let spots = regionFilter === "All" ? hikingSpots : hikingSpots.filter(s => s.region === regionFilter);
+                return [...spots].sort((a, b) => {
                     if (sortBy === 'heat') return b.heat - a.heat;
                     if (sortBy === 'rating') return b.rating - a.rating;
-                    if (sortBy === 'reviews') return b.reviews - a.reviews;
                     return 0;
                 });
-            }, [sortBy, hikingSpots]);
+            }, [sortBy, hikingSpots, regionFilter]);
 
             return (
-                <div className="flex h-full w-full relative">
+                <div className="flex h-full w-full relative overflow-hidden bg-gray-200">
                     
-                    {/* Import Modal */}
-                    {showImportModal && (
-                        <div className="absolute inset-0 z-[2000] bg-black/50 flex items-center justify-center p-4 backdrop-blur-sm">
-                            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md animate-[slideIn_0.3s_ease-out]">
-                                <div className="flex justify-between items-center mb-4">
-                                    <h3 className="text-lg font-bold text-gray-800">导入数据</h3>
-                                    <button onClick={() => setShowImportModal(false)} className="text-gray-400 hover:text-gray-600"><Icon name="x" /></button>
-                                </div>
-
-                                {/* Tabs */}
-                                <div className="flex border-b border-gray-200 mb-4">
-                                    <button 
-                                        onClick={() => setImportTab('simulate')}
-                                        className={`flex-1 py-2 text-sm font-medium ${importTab === 'simulate' ? 'text-emerald-600 border-b-2 border-emerald-600' : 'text-gray-500 hover:text-gray-700'}`}
-                                    >
-                                        快速模拟导入
-                                    </button>
-                                    <button 
-                                        onClick={() => setImportTab('json')}
-                                        className={`flex-1 py-2 text-sm font-medium ${importTab === 'json' ? 'text-emerald-600 border-b-2 border-emerald-600' : 'text-gray-500 hover:text-gray-700'}`}
-                                    >
-                                        粘贴爬虫 JSON
-                                    </button>
-                                </div>
-
-                                {importTab === 'simulate' ? (
-                                    <>
-                                        <p className="text-sm text-gray-500 mb-4">
-                                            由于浏览器限制，直接抓取 Google Maps 需要使用 Python 脚本。
-                                            <br/><br/>
-                                            这里为您提供了一个<b>“模拟演示”</b>功能，它会加载该链接中可能包含的热门地点（如 Mayfield Lavender, Painshill Park 等）。
-                                        </p>
-                                        <button 
-                                            onClick={handleSimulationImport}
-                                            disabled={importStatus === 'loading'}
-                                            className={`w-full py-3 rounded-lg font-bold text-white transition-all flex justify-center items-center gap-2 ${importStatus === 'loading' ? 'bg-gray-400' : 'bg-blue-600 hover:bg-blue-700'}`}
-                                        >
-                                            {importStatus === 'loading' ? <><Icon name="loader-2" className="animate-spin" /> 正在加载...</> : <><Icon name="download" /> 加载模拟数据</>}
-                                        </button>
-                                        {importStatus === 'error' && <p className="text-red-500 text-sm mt-2 text-center">所有模拟数据已加载。</p>}
-                                    </>
-                                ) : (
-                                    <>
-                                        <p className="text-sm text-gray-500 mb-2">
-                                            请使用提供的 Python 脚本抓取 Google Maps 链接，并将生成的 JSON 内容粘贴到下方：
-                                        </p>
-                                        <textarea 
-                                            value={jsonInput}
-                                            onChange={(e) => setJsonInput(e.target.value)}
-                                            placeholder='[{"name": "Location", "coords": [51.5, -0.1], ...}]'
-                                            className="w-full h-32 border border-gray-300 rounded-lg p-2 text-xs font-mono mb-4 focus:ring-2 focus:ring-emerald-500 outline-none resize-none"
-                                        ></textarea>
-                                        <button 
-                                            onClick={handleJsonImport}
-                                            disabled={!jsonInput}
-                                            className={`w-full py-3 rounded-lg font-bold text-white transition-all flex justify-center items-center gap-2 ${!jsonInput ? 'bg-gray-300' : 'bg-emerald-600 hover:bg-emerald-700'}`}
-                                        >
-                                            <Icon name="check" /> 解析并导入
-                                        </button>
-                                    </>
-                                )}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Sidebar */}
-                    <div className={`absolute z-[1000] top-0 left-0 h-full bg-white shadow-2xl transition-all duration-300 ease-in-out flex flex-col ${sidebarOpen ? 'w-full md:w-96 translate-x-0' : 'w-0 -translate-x-full overflow-hidden'}`}>
+                    {/* Floating Sidebar / Card */}
+                    <div className={`absolute z-[1000] top-4 bottom-4 left-4 w-full max-w-md bg-white shadow-2xl rounded-3xl flex flex-col transition-transform duration-500 ease-in-out transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-[110%]'}`}>
                         
-                        {/* Header */}
-                        <div className="p-4 border-b border-gray-100 bg-emerald-600 text-white">
-                            <div className="flex justify-between items-center mb-2">
-                                <div className="flex items-center gap-2">
-                                    <Icon name="mountain" className="text-white" />
-                                    <h1 className="font-bold text-lg">伦敦周边徒步指南</h1>
+                        {/* Header - Minimalist White */}
+                        <div className="p-6 pb-2 bg-white rounded-t-3xl z-10">
+                            <div className="flex justify-between items-start mb-2">
+                                <div>
+                                    <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight leading-none">
+                                        Where to?
+                                    </h1>
+                                    <p className="text-gray-500 text-sm font-medium mt-1">UK Hiking Guide</p>
                                 </div>
-                                <button onClick={() => setSidebarOpen(false)} className="md:hidden p-1 hover:bg-emerald-700 rounded"><Icon name="x" /></button>
-                                <button onClick={() => setSidebarOpen(false)} className="hidden md:block p-1 hover:bg-emerald-700 rounded"><Icon name="chevron-left" /></button>
+                                <button onClick={() => setSidebarOpen(false)} className="md:hidden p-2 bg-gray-100 hover:bg-gray-200 rounded-full transition-colors"><Icon name="x" size={20} className="text-gray-600" /></button>
                             </div>
-                            
-                            {/* Actions Row */}
-                            <div className="flex justify-between items-center mt-3">
-                                {!selectedSpot && (
-                                    <div className="flex gap-1 text-[10px]">
-                                        <button onClick={() => setSortBy('heat')} className={`px-2 py-1 rounded transition-colors ${sortBy === 'heat' ? 'bg-white text-emerald-700 font-bold' : 'bg-emerald-700 text-white opacity-80'}`}>按热度</button>
-                                        <button onClick={() => setSortBy('rating')} className={`px-2 py-1 rounded transition-colors ${sortBy === 'rating' ? 'bg-white text-emerald-700 font-bold' : 'bg-emerald-700 text-white opacity-80'}`}>按评分</button>
-                                    </div>
-                                )}
-                                <button 
-                                    onClick={() => setShowImportModal(true)}
-                                    className="px-2 py-1 bg-emerald-800 hover:bg-emerald-900 text-white text-xs rounded flex items-center gap-1 shadow-sm transition-colors"
-                                >
-                                    <Icon name="plus-circle" size={14} /> 导入数据
-                                </button>
+
+                            {/* Search/Filter Container */}
+                            <div className="mt-4">
+                                <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
+                                    {regions.map(region => (
+                                        <button 
+                                            key={region}
+                                            onClick={() => setRegionFilter(region)}
+                                            className={`whitespace-nowrap px-4 py-2 rounded-full text-sm font-semibold transition-all duration-200 ${regionFilter === region ? 'bg-black text-white shadow-lg' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                                        >
+                                            {region}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
+
+                            {/* Sort Pills */}
+                             {!selectedSpot && (
+                                <div className="flex gap-2 mt-2 pb-2 border-b border-gray-100">
+                                    <span className="text-xs font-bold text-gray-400 uppercase self-center mr-2">Sort by</span>
+                                    <button onClick={() => setSortBy('heat')} className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${sortBy === 'heat' ? 'bg-blue-50 text-blue-700' : 'text-gray-400 hover:bg-gray-50'}`}>Heat</button>
+                                    <button onClick={() => setSortBy('rating')} className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${sortBy === 'rating' ? 'bg-yellow-50 text-yellow-700' : 'text-gray-400 hover:bg-gray-50'}`}>Rating</button>
+                                </div>
+                            )}
                         </div>
 
-                        {/* Content */}
-                        <div className="flex-1 overflow-y-auto custom-scrollbar p-4 bg-gray-50">
+                        {/* Content Area */}
+                        <div className="flex-1 overflow-y-auto custom-scrollbar px-6 pb-6">
                             
                             {selectedSpot ? (
-                                <div className="slide-in">
-                                    <button onClick={() => setSelectedSpot(null)} className="mb-4 text-emerald-600 flex items-center gap-1 text-sm font-medium hover:underline">
-                                        <Icon name="arrow-left" size={16} /> 返回列表
+                                <div className="slide-in pt-2">
+                                    <button onClick={() => setSelectedSpot(null)} className="mb-4 inline-flex items-center gap-2 text-sm font-bold text-gray-500 hover:text-black transition-colors bg-gray-100 px-3 py-1.5 rounded-full">
+                                        <Icon name="arrow-left" size={16} /> Back
                                     </button>
                                     
-                                    <div className="bg-white rounded-xl shadow-sm p-5 border border-gray-100 relative overflow-hidden">
-                                        {visitedSpots.has(selectedSpot.id) && (
-                                            <div className="absolute top-0 right-0 bg-gray-100 text-gray-500 text-[10px] px-2 py-1 rounded-bl-lg font-bold flex items-center gap-1">
-                                                <Icon name="check-circle" size={12} className="text-green-500" /> 已打卡
-                                            </div>
-                                        )}
-
-                                        <div className="flex justify-between items-start mb-2 mt-2">
-                                            <h2 className="text-xl font-bold text-gray-800 leading-tight">{selectedSpot.name}</h2>
+                                    <div className="space-y-6">
+                                        {/* Title Section */}
+                                        <div>
+                                            {visitedSpots.has(selectedSpot.id) && (
+                                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-green-100 text-green-800 text-xs font-bold mb-2">
+                                                    <Icon name="check" size={12} strokeWidth={3} /> VISITED
+                                                </span>
+                                            )}
+                                            <h2 className="text-2xl font-bold text-gray-900 leading-tight">{selectedSpot.name}</h2>
+                                            <p className="text-gray-500 font-medium mt-1">{selectedSpot.region} • {selectedSpot.length}</p>
                                         </div>
-                                        <p className="text-sm text-emerald-600 font-medium mb-3">{selectedSpot.routeName}</p>
 
-                                        <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-100">
-                                            <div className="flex flex-col">
-                                                <div className="flex items-center gap-1">
-                                                    <span className="text-2xl font-bold text-gray-800">{selectedSpot.rating}</span>
-                                                    <div className="flex flex-col gap-0">
-                                                        <StarRating rating={selectedSpot.rating} />
-                                                        <span className="text-xs text-gray-400">{selectedSpot.reviews} 条评论</span>
-                                                    </div>
+                                        {/* Stats Grid */}
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div className="bg-gray-50 p-3 rounded-2xl">
+                                                <div className="text-xs font-bold text-gray-400 uppercase">Rating</div>
+                                                <div className="flex items-center gap-1 mt-1">
+                                                    <span className="text-xl font-bold text-gray-900">{selectedSpot.rating}</span>
+                                                    <Icon name="star" size={16} className="text-yellow-400 fill-yellow-400" />
+                                                    <span className="text-xs text-gray-400 font-medium ml-1">({selectedSpot.reviews})</span>
                                                 </div>
                                             </div>
-                                            <div className="text-right flex flex-col items-end gap-2">
-                                                 <span className={`px-2 py-1 rounded text-xs font-bold text-white ${selectedSpot.heat > 90 ? 'bg-red-500' : 'bg-orange-400'}`}>热度 {selectedSpot.heat}</span>
+                                            <div className="bg-gray-50 p-3 rounded-2xl">
+                                                <div className="text-xs font-bold text-gray-400 uppercase">Difficulty</div>
+                                                <div className={`text-sm font-bold mt-1.5 ${selectedSpot.difficulty.includes('Hard') ? 'text-red-600' : (selectedSpot.difficulty.includes('Mod') ? 'text-orange-600' : 'text-green-600')}`}>
+                                                    {selectedSpot.difficulty}
+                                                </div>
                                             </div>
                                         </div>
 
-                                        <div className="grid grid-cols-2 gap-4 mb-4 text-sm text-gray-600">
-                                            <div className="flex items-center gap-2">
-                                                <Icon name="ruler" size={16} className="text-gray-400" />
-                                                <span>{selectedSpot.length}</span>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <Icon name="activity" size={16} className="text-gray-400" />
-                                                <span>{selectedSpot.difficulty}</span>
-                                            </div>
-                                        </div>
-                                        
-                                        <p className="text-gray-600 leading-relaxed mb-6 text-sm">
+                                        <p className="text-gray-600 leading-relaxed font-medium">
                                             {selectedSpot.description}
                                         </p>
 
-                                        <div className="mb-6">
-                                            <div className="flex flex-wrap gap-1 mt-1">
-                                                {selectedSpot.tags.map(tag => (
-                                                    <span key={tag} className="text-xs text-emerald-600 bg-emerald-50 px-2 py-1 rounded border border-emerald-100">{tag}</span>
-                                                ))}
-                                            </div>
-                                        </div>
-
-                                        <div className="flex flex-col gap-2">
-                                            <div className="flex gap-2">
-                                                <button 
-                                                    onClick={(e) => toggleVisited(e, selectedSpot.id)}
-                                                    className={`flex-1 py-3 rounded-lg font-medium transition-colors flex justify-center items-center gap-2 border ${visitedSpots.has(selectedSpot.id) ? 'bg-gray-100 text-gray-600 border-gray-300' : 'bg-white text-emerald-600 border-emerald-600 hover:bg-emerald-50'}`}
-                                                >
-                                                    <Icon name={visitedSpots.has(selectedSpot.id) ? "check-circle" : "circle"} size={18} />
-                                                    {visitedSpots.has(selectedSpot.id) ? "已打卡" : "标记为已去"}
-                                                </button>
-                                                
-                                                <a href={selectedSpot.googleMapLink} target="_blank" className="flex-1 text-center bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 rounded-lg transition-colors flex justify-center items-center gap-2 shadow-lg shadow-blue-100">
-                                                    <Icon name="map" size={18} />
-                                                    Google Maps
-                                                </a>
-                                            </div>
+                                        <div className="space-y-3 pt-4">
+                                            <button 
+                                                onClick={(e) => toggleVisited(e, selectedSpot.id)}
+                                                className={`w-full py-4 rounded-2xl font-bold transition-all flex justify-center items-center gap-2 ${visitedSpots.has(selectedSpot.id) ? 'bg-green-50 text-green-700' : 'bg-gray-900 text-white hover:bg-black shadow-lg hover:shadow-xl transform hover:-translate-y-0.5'}`}
+                                            >
+                                                <Icon name={visitedSpots.has(selectedSpot.id) ? "check" : "plus"} size={20} />
+                                                {visitedSpots.has(selectedSpot.id) ? "Marked as Visited" : "Mark as Visited"}
+                                            </button>
                                             
-                                            <div className="flex gap-2">
-                                                <a 
-                                                    href={`https://www.alltrails.com/search?q=${encodeURIComponent(selectedSpot.name)}`} 
-                                                    target="_blank" 
-                                                    className="flex-1 text-center bg-green-600 hover:bg-green-700 text-white font-medium py-2 rounded-lg transition-colors flex justify-center items-center gap-2 text-sm"
-                                                >
-                                                    <Icon name="tree-pine" size={16} />
-                                                    AllTrails
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <a href={selectedSpot.googleMapLink} target="_blank" className="flex justify-center items-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold py-3 rounded-xl transition-colors">
+                                                    <Icon name="map" size={18} /> Google Maps
                                                 </a>
-                                                <a 
-                                                    href={`https://www.komoot.com/discover/text?q=${encodeURIComponent(selectedSpot.name)}`} 
-                                                    target="_blank" 
-                                                    className="flex-1 text-center bg-lime-600 hover:bg-lime-700 text-white font-medium py-2 rounded-lg transition-colors flex justify-center items-center gap-2 text-sm"
-                                                >
-                                                    <Icon name="map-pin" size={16} />
-                                                    Komoot
+                                                <a href={`https://www.alltrails.com/search?q=${encodeURIComponent(selectedSpot.name)}`} target="_blank" className="flex justify-center items-center gap-2 bg-green-50 hover:bg-green-100 text-green-700 font-bold py-3 rounded-xl transition-colors">
+                                                    <Icon name="tree-pine" size={18} /> AllTrails
                                                 </a>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             ) : (
-                                <div className="space-y-3">
-                                    <div className="flex justify-between items-center mb-1 px-1">
-                                         <span className="text-xs text-gray-400">显示 {hikingSpots.length} 个地点</span>
-                                         <span className="text-xs font-medium text-emerald-600">已打卡: {visitedSpots.size}</span>
-                                    </div>
-                                   
+                                <div className="space-y-3 pt-2">
                                     {sortedSpots.map(spot => {
                                         const isVisited = visitedSpots.has(spot.id);
                                         return (
                                             <div 
                                                 key={spot.id}
                                                 onClick={() => handleCardClick(spot)}
-                                                className={`bg-white p-4 rounded-lg shadow-sm border transition-all cursor-pointer group relative ${isVisited ? 'border-gray-200 bg-gray-50 opacity-80' : 'border-gray-100 hover:shadow-md hover:border-emerald-200'}`}
+                                                className="group bg-white p-0 rounded-2xl transition-all hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-0 pb-4 mb-2"
                                             >
-                                                {/* Visited Checkbox */}
-                                                <button 
-                                                    onClick={(e) => toggleVisited(e, spot.id)}
-                                                    className={`absolute top-4 right-4 z-10 p-1 rounded-full transition-colors ${isVisited ? 'text-green-500 bg-green-50' : 'text-gray-200 hover:text-gray-400'}`}
-                                                >
-                                                    <Icon name="check-circle" size={20} className={isVisited ? "fill-green-100" : ""} />
-                                                </button>
-
-                                                <div className="flex justify-between items-start pr-8">
-                                                    <div>
-                                                        <h3 className={`font-bold text-base ${isVisited ? 'text-gray-500 line-through' : 'text-gray-800 group-hover:text-emerald-700'}`}>{spot.name}</h3>
-                                                        <p className="text-xs text-gray-400 mt-0.5">{spot.routeName}</p>
+                                                <div className="flex justify-between items-start">
+                                                    <div className="flex-1">
+                                                        <h3 className="font-bold text-gray-900 text-lg group-hover:text-blue-700 transition-colors">{spot.name}</h3>
+                                                        <p className="text-sm text-gray-500 font-medium mt-0.5">{spot.location}</p>
+                                                        
+                                                        <div className="flex items-center gap-3 mt-2">
+                                                            <div className="flex items-center gap-1 bg-gray-100 px-2 py-0.5 rounded-md">
+                                                                <Icon name="star" size={12} className="text-gray-900 fill-gray-900"/>
+                                                                <span className="text-xs font-bold text-gray-900">{spot.rating}</span>
+                                                            </div>
+                                                            <span className="text-xs font-bold text-gray-400">{spot.length}</span>
+                                                            {isVisited && (
+                                                                <span className="text-xs font-bold text-green-600 flex items-center gap-1">
+                                                                    <Icon name="check" size={12} strokeWidth={3} /> Visited
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    <div className="bg-gray-100 p-2 rounded-full group-hover:bg-gray-200 transition-colors">
+                                                        <Icon name="chevron-right" size={20} className="text-gray-400 group-hover:text-gray-600" />
                                                     </div>
                                                 </div>
-                                                
-                                                {!isVisited && (
-                                                    <div className="mt-3 flex items-center justify-between text-xs text-gray-500">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="flex items-center gap-1 bg-yellow-50 px-1.5 py-0.5 rounded border border-yellow-100">
-                                                                <Icon name="star" size={10} className="fill-yellow-400 text-yellow-400" />
-                                                                <span className="font-bold text-gray-700">{spot.rating}</span>
-                                                            </div>
-                                                            <span className="flex items-center gap-1"><Icon name="ruler" size={12} /> {spot.length}</span>
-                                                        </div>
-                                                        <span className={`px-1.5 py-0.5 rounded text-[10px] ${
-                                                            spot.difficulty.includes('Easy') ? 'bg-green-100 text-green-700' : 
-                                                            (spot.difficulty.includes('Mod') ? 'bg-blue-100 text-blue-700' : 'bg-red-100 text-red-700')
-                                                        }`}>
-                                                            {spot.difficulty.split(' ')[0]}
-                                                        </span>
-                                                    </div>
-                                                )}
-                                                {isVisited && (
-                                                     <div className="mt-2 text-xs text-green-600 font-medium flex items-center gap-1">
-                                                        <Icon name="check" size={12} /> 完成
-                                                     </div>
-                                                )}
                                             </div>
                                         );
                                     })}
                                 </div>
                             )}
                         </div>
+                        
+                        {/* Bottom Gradient Fade */}
+                        <div className="absolute bottom-0 left-0 w-full h-12 bg-gradient-to-t from-white to-transparent rounded-b-3xl pointer-events-none"></div>
                     </div>
 
+                    {/* Sidebar Toggle (Closed state) */}
                     {!sidebarOpen && (
-                        <button onClick={() => setSidebarOpen(true)} className="absolute top-4 left-4 z-[500] bg-white p-3 rounded-full shadow-lg hover:bg-gray-50 text-emerald-600 transition-transform hover:scale-105">
-                            <Icon name="menu" />
+                        <button 
+                            onClick={() => setSidebarOpen(true)} 
+                            className="absolute top-6 left-6 z-[500] bg-white p-4 rounded-full shadow-xl hover:bg-gray-50 text-gray-900 transition-transform hover:scale-110"
+                        >
+                            <Icon name="menu" strokeWidth={2.5} />
                         </button>
                     )}
 
-                    <div className="absolute top-4 right-4 z-[500] flex flex-col gap-2">
-                        <button onClick={() => setHeatMode(!heatMode)} className={`flex items-center gap-2 px-4 py-2 rounded-lg shadow-lg font-medium transition-all ${heatMode ? 'bg-orange-500 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}>
-                            <Icon name={heatMode ? "thermometer-sun" : "map-pin"} size={18} />
-                            {heatMode ? "显示标记" : "显示热力"}
+                    {/* Map Controls - Floating Pills */}
+                    <div className="absolute top-6 right-6 z-[500] flex flex-col gap-3 items-end">
+                        <button 
+                            onClick={() => setFogMode(!fogMode)} 
+                            className={`flex items-center gap-2 px-5 py-3 rounded-full shadow-xl font-bold transition-all transform hover:scale-105 ${fogMode ? 'bg-gray-900 text-white' : 'bg-white text-gray-900'}`}
+                        >
+                            <Icon name={fogMode ? "eye-off" : "eye"} size={20} />
+                            <span className="hidden md:inline">{fogMode ? "Fog Mode On" : "Fog Mode Off"}</span>
                         </button>
                     </div>
 
-                    <div ref={mapRef} id="map" className="h-full w-full bg-gray-200"></div>
+                    {/* FOG CANVAS OVERLAY */}
+                    <canvas id="fog-canvas" ref={canvasRef}></canvas>
+
+                    <div ref={mapRef} id="map" className="h-full w-full bg-gray-100"></div>
                 </div>
             );
         };
