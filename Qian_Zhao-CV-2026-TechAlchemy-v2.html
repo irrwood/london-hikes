@@ -1,0 +1,529 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Qian Zhao - CV</title>
+    <meta
+      name="description"
+      content="Qian Zhao, UX and Product Designer based in London and remote."
+    />
+    <style>
+      :root {
+        --accent: #1600ff;
+        --text: #080808;
+        --muted: #a6a6a6;
+        --rule: #e6e6e6;
+        --page: #ffffff;
+        --max-width: 1120px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        background: var(--page);
+        color: var(--text);
+        font-family: Helvetica, Arial, sans-serif;
+        font-size: 16px;
+        letter-spacing: 0;
+      }
+
+      body {
+        margin: 0;
+        min-width: 320px;
+      }
+
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+
+      a:hover,
+      a:focus-visible {
+        color: var(--accent);
+        text-decoration: underline;
+        text-underline-offset: 0.18em;
+      }
+
+      .page {
+        width: min(var(--max-width), calc(100% - 48px));
+        margin: 0 auto;
+        padding: 68px 0 80px;
+      }
+
+      .header {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 320px;
+        gap: 72px;
+        align-items: start;
+        margin-bottom: 72px;
+      }
+
+      h1 {
+        margin: 0 0 34px;
+        color: var(--accent);
+        font-family: "Times New Roman", Times, serif;
+        font-size: clamp(4.3rem, 9vw, 7.2rem);
+        font-style: italic;
+        font-weight: 700;
+        line-height: 0.82;
+      }
+
+      .intro {
+        max-width: 690px;
+      }
+
+      .intro p {
+        margin: 0 0 22px;
+        font-size: 1.42rem;
+        line-height: 1.2;
+      }
+
+      .contact {
+        padding-top: 6px;
+      }
+
+      .location {
+        margin: 0 0 22px;
+        color: var(--accent);
+        font-family: "Times New Roman", Times, serif;
+        font-size: 1.78rem;
+        font-style: italic;
+        font-weight: 700;
+        line-height: 1;
+      }
+
+      .contact-line {
+        display: block;
+        margin: 0 0 5px;
+        font-size: 1.2rem;
+        line-height: 1.2;
+      }
+
+      .portfolio-link {
+        display: inline-block;
+        margin: 38px 0 24px;
+        color: var(--accent);
+        font-family: "Times New Roman", Times, serif;
+        font-size: 1.72rem;
+        font-style: italic;
+        font-weight: 700;
+      }
+
+      .socials {
+        display: flex;
+        gap: 28px;
+        align-items: center;
+      }
+
+      .social {
+        display: inline-grid;
+        width: 43px;
+        height: 43px;
+        place-items: center;
+        border-radius: 50%;
+        background: var(--accent);
+        color: #fff;
+        font-size: 0.92rem;
+        font-weight: 700;
+        line-height: 1;
+        text-decoration: none;
+      }
+
+      .social:first-child {
+        font-size: 0.76rem;
+      }
+
+      .social:hover,
+      .social:focus-visible {
+        color: #fff;
+        outline: 2px solid var(--accent);
+        outline-offset: 4px;
+        text-decoration: none;
+      }
+
+      .content {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 320px;
+        gap: 72px;
+        align-items: start;
+      }
+
+      h2 {
+        margin: 0 0 24px;
+        color: var(--accent);
+        font-family: "Times New Roman", Times, serif;
+        font-size: 2rem;
+        font-style: italic;
+        font-weight: 700;
+        line-height: 1;
+      }
+
+      .experience-list {
+        display: grid;
+        gap: 40px;
+      }
+
+      .job h3 {
+        margin: 0 0 8px;
+        font-size: 1.72rem;
+        font-weight: 400;
+        line-height: 1.1;
+      }
+
+      .job h3 strong {
+        font-weight: 700;
+      }
+
+      .job h3 em {
+        font-style: italic;
+      }
+
+      .date {
+        margin: 0 0 22px;
+        color: var(--muted);
+        font-size: 1rem;
+        letter-spacing: 0.07em;
+        line-height: 1.1;
+        text-transform: uppercase;
+      }
+
+      .job p {
+        margin: 0 0 17px;
+        font-size: 1.2rem;
+        line-height: 1.25;
+      }
+
+      .job ul {
+        display: grid;
+        gap: 12px;
+        margin: 0;
+        padding-left: 25px;
+      }
+
+      .job li {
+        padding-left: 4px;
+        font-size: 1.16rem;
+        line-height: 1.28;
+      }
+
+      .sidebar {
+        display: grid;
+        gap: 40px;
+      }
+
+      .side-section h2 {
+        margin-bottom: 25px;
+      }
+
+      .side-list {
+        display: grid;
+        gap: 25px;
+      }
+
+      .side-item {
+        font-size: 1.22rem;
+        line-height: 1.18;
+      }
+
+      .muted {
+        display: block;
+        margin-top: 6px;
+        color: var(--muted);
+      }
+
+      .plain-list {
+        display: grid;
+        gap: 8px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .plain-list li,
+      .portfolio-list a {
+        font-size: 1.18rem;
+        line-height: 1.22;
+      }
+
+      .portfolio-list {
+        display: grid;
+        gap: 6px;
+      }
+
+      @media (max-width: 900px) {
+        .page {
+          width: min(100% - 34px, 720px);
+          padding: 38px 0 58px;
+        }
+
+        .header,
+        .content {
+          grid-template-columns: 1fr;
+          gap: 38px;
+        }
+
+        .header {
+          margin-bottom: 50px;
+        }
+
+        h1 {
+          margin-bottom: 26px;
+        }
+
+        .intro p {
+          font-size: 1.16rem;
+          line-height: 1.27;
+        }
+
+        .location,
+        .portfolio-link,
+        h2 {
+          font-size: 1.62rem;
+        }
+
+        .socials {
+          gap: 18px;
+        }
+
+        .job h3 {
+          font-size: 1.45rem;
+        }
+
+        .job p,
+        .job li,
+        .side-item,
+        .plain-list li,
+        .portfolio-list a {
+          font-size: 1.05rem;
+        }
+
+        .sidebar {
+          border-top: 1px solid var(--rule);
+          padding-top: 38px;
+        }
+      }
+
+      @media print {
+        .page {
+          width: auto;
+          max-width: none;
+          padding: 0;
+        }
+
+        .header,
+        .content {
+          grid-template-columns: 1fr 300px;
+          gap: 48px;
+        }
+
+        a {
+          text-decoration: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page" aria-label="Qian Zhao CV">
+      <header class="header">
+        <div>
+          <h1>Qian Zhao</h1>
+          <div class="intro" aria-label="Profile">
+            <p>Senior Product Designer with 10+ years of experience across Web3, fintech, consumer products, and design systems.</p>
+            <p>
+              Strong at translating complex technical workflows into clear, scalable
+              product experiences, and at leading design end to end.
+            </p>
+            <p>
+              Works across product strategy, UX architecture, interaction design, and
+              design systems, with a focus on delivery and business impact.
+            </p>
+          </div>
+        </div>
+
+        <aside class="contact" aria-label="Contact">
+          <p class="location">London &amp; Remote</p>
+          <a class="contact-line" href="mailto:zhao.qian@outlook.com">zhao.qian@outlook.com</a>
+          <a class="contact-line" href="tel:+447909075993">+44 7909 075993</a>
+          <a class="portfolio-link" href="https://qian-zhao-portfolio.webflow.io">Portfolio (Link)</a>
+          <nav class="socials" aria-label="Portfolio links">
+            <a class="social" href="https://qian-zhao-portfolio.webflow.io" aria-label="Website">www</a>
+            <a class="social" href="https://dribbble.com/zhaoian" aria-label="Dribbble">Dr</a>
+            <a class="social" href="https://www.behance.net/eion" aria-label="Behance">Be</a>
+            <a class="social" href="https://www.linkedin.com/in/qian-zhao-20bb66203/" aria-label="LinkedIn">in</a>
+          </nav>
+        </aside>
+      </header>
+
+      <div class="content">
+        <section aria-labelledby="experience-heading">
+          <h2 id="experience-heading">Experience</h2>
+          <div class="experience-list">
+            <article class="job">
+              <h3><strong>Tech Alchemy</strong> - <em>Senior Product Designer</em></h3>
+              <p class="date">Apr 2023 - Present, London, UK</p>
+              <p>
+                Led end-to-end design for a B2B Web3 payments platform, covering product
+                strategy, UX architecture, design systems, and production delivery.
+              </p>
+              <ul>
+                <li>
+                  Owned product design for <strong>Best Wallet</strong>, a flagship
+                  multi-chain crypto wallet, across mobile and web — from strategy and
+                  UX architecture through to shipped product.
+                </li>
+                <li>
+                  Designed conversion-focused token presale and ICO platforms, covering
+                  wallet connection, purchase, transaction, dashboard, and post-sale flows.
+                </li>
+                <li>Contributed to Web3 presale campaigns that collectively raised $120M+.</li>
+                <li>
+                  Set design direction and reusable system components, partnering closely
+                  with product and engineering to keep delivery fast and consistent across teams.
+                </li>
+                <li>
+                  Simplified blockchain and multi-chain payment processes into intuitive
+                  product experiences.
+                </li>
+                <li>
+                  Introduced AI-assisted workflows to improve design quality, iteration speed,
+                  and design-to-development efficiency.
+                </li>
+              </ul>
+            </article>
+
+            <article class="job">
+              <h3><strong>Copper.co</strong> - <em>Product Designer</em></h3>
+              <p class="date">Mar 2022 - Jan 2023, London</p>
+              <p>
+                Designed institutional digital asset products across custody, asset
+                management, and mobile experiences.
+              </p>
+              <ul>
+                <li>Designed an asset management platform for institutional digital asset clients.</li>
+                <li>Designed iOS app experiences for digital asset management.</li>
+                <li>Built scalable iOS design system components.</li>
+              </ul>
+            </article>
+
+            <article class="job">
+              <h3><strong>University of the Arts London</strong> - <em>MA Service Design</em></h3>
+              <p class="date">2019 - 2021, London, UK</p>
+              <p>
+                Full-time master's in Service Design, deepening research, systems thinking,
+                and end-to-end service strategy.
+              </p>
+            </article>
+
+            <article class="job">
+              <h3><strong>Zhihu</strong> - <em>Senior Product Designer</em></h3>
+              <p class="date">Oct 2017 - Jan 2019, Beijing, China</p>
+              <p>Designed content, creator, and paid knowledge experiences for a large-scale community platform.</p>
+              <ul>
+                <li>
+                  Partnered with product, engineering, creators, and merchants to improve
+                  key product journeys.
+                </li>
+                <li>
+                  Redesigned web and mobile experiences for e-books, paid knowledge, and
+                  video, supporting 26M+ cumulative purchases across the paid knowledge business.
+                </li>
+                <li>
+                  Led video creation tools that more than doubled video uploads.
+                </li>
+              </ul>
+            </article>
+
+            <article class="job">
+              <h3><strong>LeEco Mobile</strong> - <em>UX &amp; Motion Designer</em></h3>
+              <p class="date">May 2015 - Aug 2017, Beijing, China</p>
+              <p>
+                Designed UX and motion for EUI, an Android-based mobile operating system.
+              </p>
+              <ul>
+                <li>
+                  Shipped a redesigned operating system interface from concept to launch.
+                </li>
+                <li>Created system motion guidelines from the ground up.</li>
+                <li>
+                  Designed motion, voice assistant, lock screen, and notification modules;
+                  improved voice assistant retention by 54%.
+                </li>
+              </ul>
+            </article>
+
+            <article class="job">
+              <h3><strong>MOSHI Group</strong> - <em>UI Designer</em></h3>
+              <p class="date">Nov 2013 - May 2015, Xiamen, China</p>
+              <p>Designed a weak-tie social app from concept to launch.</p>
+              <ul>
+                <li>Built core UI flows and interaction patterns.</li>
+                <li>Iterated the product experience across early releases.</li>
+              </ul>
+            </article>
+          </div>
+        </section>
+
+        <aside class="sidebar" aria-label="Additional information">
+          <section class="side-section" aria-labelledby="education-heading">
+            <h2 id="education-heading">Education</h2>
+            <div class="side-list">
+              <p class="side-item">MA Service Design, 2019-2021 <span class="muted">University of the Arts London</span></p>
+              <p class="side-item">BA Art Design, 2014 <span class="muted">Hainan University</span></p>
+            </div>
+          </section>
+
+          <section class="side-section" aria-labelledby="patents-heading">
+            <h2 id="patents-heading">Patents</h2>
+            <ul class="plain-list">
+              <li>30 Chinese Patents</li>
+              <li>5 American Patents</li>
+            </ul>
+          </section>
+
+          <section class="side-section" aria-labelledby="skills-heading">
+            <h2 id="skills-heading">Skills &amp; Tools</h2>
+            <ul class="plain-list">
+              <li>Interface &amp; UX Design</li>
+              <li>Product Design</li>
+              <li>Motion Design / Lottie / Rive</li>
+              <li>Visual Design</li>
+              <li>Design Research</li>
+              <li>Service Design</li>
+              <li>Video Editing</li>
+              <li>Interactable Prototypes</li>
+              <li>After Effect / Photoshop</li>
+              <li>Figma / Sketch</li>
+            </ul>
+          </section>
+
+          <section class="side-section" aria-labelledby="awards-heading">
+            <h2 id="awards-heading">Awards</h2>
+            <div class="side-list">
+              <p class="side-item">2025, UX Design Award</p>
+              <p class="side-item">1st Prize, 2013, Baidu Input Theme Design Competition</p>
+              <p class="side-item">2nd Prize, 2012, Tourism Advertising Creative Design Award</p>
+            </div>
+          </section>
+
+          <section class="side-section" aria-labelledby="language-heading">
+            <h2 id="language-heading">Language</h2>
+            <p class="side-item">English / Mandarin</p>
+          </section>
+
+          <section class="side-section" aria-labelledby="portfolio-heading">
+            <h2 id="portfolio-heading">Portfolio</h2>
+            <div class="portfolio-list">
+              <a href="https://qian-zhao-portfolio.webflow.io">qian-zhao-portfolio.webflow.io</a>
+              <a href="https://dribbble.com/zhaoian">dribbble.com/zhaoian</a>
+              <a href="https://www.behance.net/eion">behance.net/eion</a>
+              <a href="https://www.linkedin.com/in/qian-zhao-20bb66203/">linkedin.com/in/qian-zhao-20bb66203</a>
+            </div>
+          </section>
+        </aside>
+      </div>
+    </main>
+  </body>
+</html>
